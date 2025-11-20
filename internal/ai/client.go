@@ -63,7 +63,7 @@ func (c *Client) makeRequest(endpoint string, payload interface{}) ([]byte, erro
 	
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API Returned: %d", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("API Returned: %d, %s", resp.StatusCode, string(body))
 	}
 	
 	return io.ReadAll(resp.Body)
