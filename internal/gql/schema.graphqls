@@ -1,0 +1,40 @@
+scalar Time
+
+type Note {
+    id: ID!
+    title: String!
+    content: String!
+    tags: [String!]!
+    createdAt: Time!
+    updatedAt: Time!
+    summary: String
+    keyConcepts: [String!]!
+}
+
+type Link {
+    id: ID!
+    targeNoteId: ID!
+    description: String
+    createdAt: Time!
+}
+
+type backLink {
+    id: ID!
+    sourceNote: Note!
+    description: String
+    createdAt: Time!
+}
+
+type searchResult {
+    note: Note!
+    score: float!
+    reason: String!
+    matchType: String!
+}
+
+type smartSearchResponse {
+    results: [searchResult!]!
+    explanation: String!
+    gaps: [String!]!
+    connection: [String!]!
+}
