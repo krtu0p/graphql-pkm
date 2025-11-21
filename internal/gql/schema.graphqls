@@ -38,3 +38,48 @@ type smartSearchResponse {
     gaps: [String!]!
     connection: [String!]!
 }
+
+type createNoteInput {
+    title: String!
+    content: String!
+    tags: [String!]!
+}
+
+type updateNoteInput {
+    title: String!
+    content: String!
+    tags: [String!]!
+}
+
+type Query {
+    #notes query
+    notes: [Note!]!
+    note(id: ID!): Note
+    searchNotes(query: String!): [Note!]!
+    notesByTag(tag: String!): [Note!]!
+    
+    #links query
+    backlinks(noteId: ID!): [backLink!]!
+    links(noteId: ID!): [Link!]!
+
+    #Ai Search
+    semanticSearch(query: String!): [searchResult!]!
+    smartSearch(query: String!): smartSearchResponse!
+    hybridSearch(query: String!): [searchResult!]!
+}
+
+type Mutation {
+    #Notes Mutation
+    createNote(input: createNoteInput!): Note!
+    updateNote(id: ID!, input: updateNoteInput!): Note!
+    deleteNote(id: ID!): Boolean!
+    
+    #Links Mutation
+    linkNotes(sourceId: ID!, targetId: ID!, description: String!): Link!
+    unLinkNotes(linkId: ID!): Boolean!
+}
+
+type Subscription {
+    noteCreated: Note!
+    noteUpdated: Note!
+}

@@ -1,0 +1,4 @@
+schema:
+  - internal/gql/schema.graphqls
+models:
+  filename: internal/models/types.go
