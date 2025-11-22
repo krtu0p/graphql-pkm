@@ -3,7 +3,9 @@ package database
 import (
 	"fmt"
 	"graphql-pkm/internal/models"
+	"strings"
 	"sync"
+
 )
 
 type MemoryDB struct {
@@ -19,14 +21,14 @@ func NewMemoryDB() *MemoryDB {
 	}
 }
 
-func (db *MemoryDB) createNote(note *models.Note) error {
+func (db *MemoryDB) CreateNote(note *models.Note) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 	db.notes[note.ID] = note
 	return nil
 }
 
-func (db *MemoryDB) updateNote(note *models.Note) error {
+func (db *MemoryDB) UpdateNote(note *models.Note) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 	
@@ -39,7 +41,7 @@ func (db *MemoryDB) updateNote(note *models.Note) error {
 }
 
 
-func (db *MemoryDB) getNote(id string) (*models.Note, error) {
+func (db *MemoryDB) GetNote(id string) (*models.Note, error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 	
@@ -50,7 +52,7 @@ func (db *MemoryDB) getNote(id string) (*models.Note, error) {
 	return note, nil
 }
 
-func (db *MemoryDB) deleteNote(id string) error {
+func (db *MemoryDB) DeleteNote(id string) error {
 	db.mu.Lock()
 	defer db.mu.Unlock()
 	
@@ -63,7 +65,7 @@ func (db *MemoryDB) deleteNote(id string) error {
 }
 
 
-func (db *MemoryDB) getAllNotes() ([]*models.Note, error){
+func (db *MemoryDB) GetAllNotes() ([]*models.Note, error){
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 	
@@ -76,25 +78,60 @@ func (db *MemoryDB) getAllNotes() ([]*models.Note, error){
 }
 
 
-func (db *MemoryDB) getNotesByTag(note *models.Note) error {
+func (db *MemoryDB) GetNotesByTag(tag string) ([]*models.Note, error) {
+	db.mu.RLock()
+	defer db.mu.Unlock()
+	
+	var results []*models.Note
+	for _, note := range db.notes {
+		for _, noteTag := range note.Tags {
+			if noteTag == tag {
+				results = append(results, note)
+				break
+			}
+		}
+	}
+	
+	return results, nil
+}
+
+
+func (db *MemoryDB) CreateLink(link *models.Link) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	
+	db.links[link.ID] = link
 	return nil
 }
 
 
-func (db *MemoryDB) createLink(note *models.Note) error {
-	return nil
+func (db *MemoryDB) GetLinksByNote(noteID string) ([]*models.Link, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+	
+	var links []*models.Link
+	for _, link := range db.links {
+		if link.SourceNoteID == noteID {
+			links = append(links, link)
+		}
+	}
+	
+	return links, nil
 }
 
-
-func (db *MemoryDB) UpdateNote(note *models.Note) error {
-	return nil
-}
-
-
-func (db *MemoryDB) getLinksByNote(note *models.Note) error {
-	return nil
-}
-
-func (db *MemoryDB) searchNotes(note *models.Note) error {
-	return nil
+func (db *MemoryDB) SearchNotes(query string) ([]*models.Note, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+	
+	var results []*models.Note
+	query = strings.ToLower(query)
+	
+	for _, note := range db.notes {
+		if strings.Contains(strings.ToLower(note.Title), query) ||
+		strings.Contains(strings.ToLower(note.Content), query) {
+			results = append(results, note)
+		}
+	}
+	
+	return results, nil
 }
