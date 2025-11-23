@@ -24,7 +24,7 @@ type Link struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-type backLink struct {
+type BackLink struct {
 	ID        string `json:"id"`
 	SourceNoteID string `json:"sourceNoteId"`
 	TargetNoteID string `json:"targetNoteId"`
@@ -32,27 +32,27 @@ type backLink struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-type searchResult struct {
-	NoteID		*Note `json:"note"`
+type SearchResult struct {
+	Note		*Note `json:"note"`
 	Score		float64 `json:"score"`
 	Reason		string `json:"reason"`
 	MatchType	string `json:"matchType"`
 }
 
-type smartSearchResponse struct {
-	Results		[]searchResult `json:"results"`
+type SmartSearchResponse struct {
+	Results		[]*SearchResult `json:"results"`
 	Explanation	string `json:"explanation"`
 	Gaps		[]string `json:"gaps"`
 	Connections	[]string `json:"connections"`
 }
 
-type createNoteInput struct {
+type CreateNoteInput struct {
 	Title     string `json:"title"`
 	Content   string `json:"content"`
 	Tags      []string `json:"tags"`
 }
 
-type updateNoteInput struct {
+type UpdateNoteInput struct {
 	Title     *string `json:"title"`
 	Content   *string `json:"content"`
 	Tags      []string `json:"tags"`

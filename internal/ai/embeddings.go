@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-func (c *Client) getEmbbeding(text string) ([]float32, error) {
+func (c *Client) GetEmbedding(text string) ([]float32, error) {
 	if c.supportsEmbeddings() {
 		return c.getDirectEmbedding(text)
 	}

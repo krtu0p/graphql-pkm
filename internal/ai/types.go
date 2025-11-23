@@ -35,7 +35,7 @@ type openRouterChatResponse struct {
 	Model string `json:"model"`
 }
 
-type smartSearchResult struct { 
+type SmartSearchResult struct { 
 	RelevantNotes []struct {
 		NoteID string `json:"noteId"`
 		Reason string `json:"reason"`

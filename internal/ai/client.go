@@ -16,7 +16,7 @@ type Client struct {
 	model      string
 }
 
-func newClient(apiKey, baseURL, model string) *Client {
+func NewClient(apiKey, baseURL, model string) *Client {
 	return &Client{
 		apiKey:  apiKey,
 		baseURL: baseURL,
@@ -27,16 +27,16 @@ func newClient(apiKey, baseURL, model string) *Client {
 	}
 }
 
-func (c *Client) isEnabled() bool {
+func (c *Client) IsEnabled() bool {
 	return c.apiKey != ""
 }
 
-func (c *Client) setModel(model string) {
+func (c *Client) SetModel(model string) {
 	c.model = model
 }
 
 func (c *Client) makeRequest(endpoint string, payload interface{}) ([]byte, error) {
-	if !c.isEnabled() {
+	if !c.IsEnabled() {
 		return nil, fmt.Errorf("AI client is not enabled")
 	}
 

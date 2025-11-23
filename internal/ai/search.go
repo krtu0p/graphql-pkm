@@ -7,8 +7,8 @@ import (
 )
 
 
-func (c *Client) smartSearch(query string, contextNotes map[string]string) (*smartSearchResult, error){
-	if !c.isEnabled() {
+func (c *Client) SmartSearch(query string, contextNotes map[string]string) (*SmartSearchResult, error){
+	if !c.IsEnabled() {
 		return nil, fmt.Errorf("AI client is not enabled")
 	}
 	
@@ -78,7 +78,7 @@ func (c *Client) smartSearch(query string, contextNotes map[string]string) (*sma
 	content = strings.ReplaceAll(content, "```", "")
 	content = strings.TrimSpace(content)
 	
-	var result smartSearchResult
+	var result SmartSearchResult
 	if err := json.Unmarshal([]byte(content), &result); err != nil {
 		return nil, fmt.Errorf("error parsing ai json response")
 	}
