@@ -7,15 +7,14 @@ import (
 	"graphql-pkm/internal/models"
 	"strings"
 	"time"
-
 )
 
-type noteService struct {
+type NoteService struct {
 	db  *database.MemoryDB
 }
 
-func newNoteService(db *database.MemoryDB) *noteService {
-	return &noteService{db: db}
+func newNoteService(db *database.MemoryDB) *NoteService {
+	return &NoteService{db: db}
 }
 
 
@@ -29,7 +28,7 @@ func generateId() (string, error) {
 	return fmt.Sprintf("%x", b), nil
 }
 
-func (s *noteService) createNote(title, content string, tags []string) (*models.Note, error) {
+func (s *NoteService) CreateNote(title, content string, tags []string) (*models.Note, error) {
 	if strings.TrimSpace(title) == "" {
 		return nil, fmt.Errorf("Tittle cannot be empty")
 	}
@@ -58,26 +57,34 @@ func (s *noteService) createNote(title, content string, tags []string) (*models.
 	
 }
 
-func (s *noteService) GetAllNotes() ([]*models.Note, error) {
+func (s *NoteService) GetAllNotes() ([]*models.Note, error) {
 	return s.db.GetAllNotes()
 }
 
-func (s *noteService) GetNote(id string) (*models.Note, error) {
+func (s *NoteService) GetNote(id string) (*models.Note, error) {
 	return s.db.GetNote(id)
 }
 
-func (s *noteService) GetNotesByTags(tag string) ([]*models.Note, error) {
-	return  s.db.GetNotesByTag(tag)
+func (s *NoteService) SearchNotes(query string) ([]*models.Note, error) {
+	if strings.TrimSpace(query) == "" {
+		return []*models.Note{}, nil
+	}
+	
+	return s.db.SearchNotes(query)
 }
 
-func (s *noteService) UpdateNote(id string, title, content *string, tags []string) (*models.Note, error) {
+func (s *NoteService) GetNotesByTag(tag string) ([]*models.Note, error) {
+	return s.db.GetNotesByTag(tag)
+}
+
+func (s *NoteService) UpdateNote(id string, title, content *string, tags []string) (*models.Note, error) {
 	note, err := s.db.GetNote(id)
 	if err != nil {
 		return nil, err
 	}
 	
 	if note == nil {
-		return nil, fmt.Errorf("note doesn't exist")
+		return nil, fmt.Errorf("note not exists")
 	}
 	
 	if title != nil {
@@ -102,15 +109,15 @@ func (s *noteService) UpdateNote(id string, title, content *string, tags []strin
 	return note, nil
 }
 
-func (s *noteService) DeleteNote(id string) error {
+func (s *NoteService) DeleteNote(id string) error {
 	return s.db.DeleteNote(id)
 }
 
-func (s *noteService) GetLinks(noteID string) ([]*models.Link, error) {
+func (s *NoteService) GetLinks(noteID string) ([]*models.Link, error) {
 	return s.db.GetLinksByNote(noteID)
 }
 
-func (s *noteService) normalizeTags(tags []string) []string {
+func (s *NoteService) normalizeTags(tags []string) []string {
 	var normalized []string
 	for _, tag := range tags {
 		trimmed := strings.TrimSpace(tag)
