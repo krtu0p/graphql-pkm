@@ -11,6 +11,7 @@ type Config struct {
 	ApiKey      string
 	ApiUrl      string
 	DefaultModel string
+	DatabaseUrl string
 }
 
 func LoadConfig() (*Config, error) {
@@ -27,6 +28,7 @@ func LoadConfig() (*Config, error) {
 		ApiKey:      getEnv("apiKey", ""),
 		ApiUrl:      getEnv("apiUrl", "https://openrouter.ai/api/v1"),
 		DefaultModel: getEnv("defaultModel", "deepseek/deepseek-coder:33b-instruct"),
+		DatabaseUrl: getEnv("dbUrl", "root:password@tcp(localhost:3306)/pkm?parseTime=true"),
 	}, nil
 }
 

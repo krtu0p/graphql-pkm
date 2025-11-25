@@ -1,6 +1,7 @@
 package database
 
 import (
+	"crypto/subtle"
 	"database/sql"
 	"encoding/json"
 	"graphql-pkm/internal/gql/models"
@@ -116,7 +117,32 @@ func (m *MySQLDB) GetNote(id string) (*models.Note, error) {
 	return &note, nil
 }
 
-func (m *MySQLDB) GetAllNotes() {
+func (m *MySQLDB) GetAllNotes() ([]*models.Note, error) {
+	rows, err := m.db.Query(`
+		SELECT * FROM notes ORDER BY created_at DESC
+	`)
+	
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	
+	var notes []*models.Note
+	for rows.Next() {
+		var note models.Note
+		var tagsJSON, keyConceptsJSON string
+		
+		err := rows.Scan(&note.ID, &note.Title, &note.Content, &tagsJSON, &note.CreatedAt, &note.UpdatedAt, &note.Summary, keyConceptsJSON)
+		if err != nil {
+			return nil, err
+		}
+		
+		json.Unmarshal([]byte(tagsJSON), &note.Tags)
+		json.Unmarshal([]byte(keyConceptsJSON), &note.KeyConcepts)
+		notes = append(notes, &note)
+	}
+	
+	return notes, nil
 	
 }
 
