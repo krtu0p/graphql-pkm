@@ -1,11 +1,10 @@
 package database
 
 import (
-	"crypto/subtle"
 	"database/sql"
-	"encoding/json"
-	"graphql-pkm/internal/gql/models"
 	"log"
+	"graphql-pkm/internal/models"
+	"encoding/json"
 )
 
 type MySQLDB struct {
