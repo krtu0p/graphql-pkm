@@ -1,4 +1,21 @@
 schema:
   - internal/gql/schema.graphqls
-models:
+exec:
+  filename: internal/gql/generated/generated.go
+model:
   filename: internal/models/types.go
+resolver:
+  filename: internal/gql/resolvers/resolver.go
+  type: Resolver
+models:
+  ID:
+    model:
+      - github.com/99designs/gqlgen/graphql.ID
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Int32
+  Int:
+    model:
+      - github.com/99designs/gqlgen/graphql.Int
+      - github.com/99designs/gqlgen/graphql.Int64
+      - github.com/99designs/gqlgen/graphql.Int32

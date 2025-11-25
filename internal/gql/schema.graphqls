@@ -1,85 +1,78 @@
 scalar Time
 
 type Note {
-    id: ID!
-    title: String!
-    content: String!
-    tags: [String!]!
-    createdAt: Time!
-    updatedAt: Time!
-    summary: String
-    keyConcepts: [String!]!
+  id: ID!
+  title: String!
+  content: String!
+  tags: [String!]!
+  createdAt: Time!
+  updatedAt: Time!
+  summary: String
+  keyConcepts: [String!]!
 }
 
 type Link {
-    id: ID!
-    targeNoteId: ID!
-    description: String
-    createdAt: Time!
+  id: ID!
+  sourceNoteId: ID!
+  targetNoteId: ID!
+  description: String
+  createdAt: Time!
 }
 
-type backLink {
-    id: ID!
-    sourceNote: Note!
-    description: String
-    createdAt: Time!
+type Backlink {
+  id: ID!
+  sourceNote: Note!
+  description: String
+  createdAt: Time!
 }
 
-type searchResult {
-    note: Note!
-    score: float!
-    reason: String!
-    matchType: String!
+type SearchResult {
+  note: Note!
+  score: Float!
+  reason: String!
+  matchType: String!
 }
 
-type smartSearchResponse {
-    results: [searchResult!]!
-    explanation: String!
-    gaps: [String!]!
-    connection: [String!]!
+type SmartSearchResponse {
+  results: [SearchResult!]!
+  explanation: String!
+  gaps: [String!]!
+  connections: [String!]!
 }
 
-type createNoteInput {
-    title: String!
-    content: String!
-    tags: [String!]!
+input CreateNoteInput {
+  title: String!
+  content: String!
+  tags: [String!]
 }
 
-type updateNoteInput {
-    title: String!
-    content: String!
-    tags: [String!]!
+input UpdateNoteInput {
+  title: String
+  content: String
+  tags: [String!]
 }
 
 type Query {
-    #notes query
-    notes: [Note!]!
-    note(id: ID!): Note
-    searchNotes(query: String!): [Note!]!
-    notesByTag(tag: String!): [Note!]!
-    
-    #links query
-    backlinks(noteId: ID!): [backLink!]!
-    links(noteId: ID!): [Link!]!
-
-    #Ai Search
-    semanticSearch(query: String!): [searchResult!]!
-    smartSearch(query: String!): smartSearchResponse!
-    hybridSearch(query: String!): [searchResult!]!
+  notes: [Note!]!
+  note(id: ID!): Note
+  searchNotes(query: String!): [Note!]!
+  notesByTag(tag: String!): [Note!]!
+  backlinks(noteId: ID!): [Backlink!]!
+  links(noteId: ID!): [Link!]!
+  semanticSearch(query: String!): [SearchResult!]!
+  smartSearch(query: String!): SmartSearchResponse!
+  hybridSearch(query: String!): [SearchResult!]!
 }
 
 type Mutation {
-    #Notes Mutation
-    createNote(input: createNoteInput!): Note!
-    updateNote(id: ID!, input: updateNoteInput!): Note!
-    deleteNote(id: ID!): Boolean!
-    
-    #Links Mutation
-    linkNotes(sourceId: ID!, targetId: ID!, description: String!): Link!
-    unLinkNotes(linkId: ID!): Boolean!
+  createNote(input: CreateNoteInput!): Note!
+  updateNote(id: ID!, input: UpdateNoteInput!): Note!
+  deleteNote(id: ID!): Boolean!
+  linkNotes(sourceId: ID!, targetId: ID!, description: String): Link!
+  unlinkNotes(linkId: ID!): Boolean!
 }
 
 type Subscription {
-    noteCreated: Note!
-    noteUpdated: Note!
+  noteCreated: Note!
+  noteUpdated: Note!
 }

@@ -8,13 +8,13 @@ import (
 type Config struct {
 	Port        int
 	Environment string
-	apiKey      string
-	apiUrl      string
-	defaultModel string
+	ApiKey      string
+	ApiUrl      string
+	DefaultModel string
 }
 
 func LoadConfig() (*Config, error) {
-	portStr := getEnv("PORT", "8080")
+	portStr := getEnv("Port", "8080")
 
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
@@ -24,7 +24,9 @@ func LoadConfig() (*Config, error) {
 	return &Config{
 		Port:        port,
 		Environment: getEnv("ENVIRONMENT", "development"),
-		apiKey:      getEnv("API_KEY", ""),
+		ApiKey:      getEnv("apiKey", ""),
+		ApiUrl:      getEnv("apiUrl", "https://openrouter.ai/api/v1"),
+		DefaultModel: getEnv("defaultModel", "deepseek/deepseek-coder:33b-instruct"),
 	}, nil
 }
 

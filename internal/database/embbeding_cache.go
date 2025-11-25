@@ -7,7 +7,7 @@ type EmbeddingsCache struct {
 	mu		   sync.RWMutex
 }
 
-func newEmbeddingsCache() *EmbeddingsCache {
+func NewEmbeddingsCache() *EmbeddingsCache {
 	return &EmbeddingsCache{
 		embeddings: make(map[string][]float32),
 	}

@@ -13,7 +13,7 @@ type NoteService struct {
 	db  *database.MemoryDB
 }
 
-func newNoteService(db *database.MemoryDB) *NoteService {
+func NewNoteService(db *database.MemoryDB) *NoteService {
 	return &NoteService{db: db}
 }
 
