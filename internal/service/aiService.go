@@ -10,11 +10,11 @@ import (
 
 type AIService struct {
     aiClient        *ai.Client
-    embeddingsCache *database.EmbeddingsCache
+    embeddingsCache *database.MySQLEmbeddingsCache
     noteService     *NoteService
 }
 
-func NewAIService(aiClient *ai.Client, cache *database.EmbeddingsCache, noteService *NoteService) *AIService {
+func NewAIService(aiClient *ai.Client, cache *database.MySQLEmbeddingsCache, noteService *NoteService) *AIService {
     return &AIService{
         aiClient:        aiClient,
         embeddingsCache: cache,

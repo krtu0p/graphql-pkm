@@ -10,10 +10,10 @@ import (
 )
 
 type NoteService struct {
-	db  *database.MemoryDB
+	db database.Database
 }
 
-func NewNoteService(db *database.MemoryDB) *NoteService {
+func NewNoteService(db database.Database) *NoteService {
 	return &NoteService{db: db}
 }
 
