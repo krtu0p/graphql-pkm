@@ -9,6 +9,8 @@ type Note {
   updatedAt: Time!
   summary: String
   keyConcepts: [String!]!
+  links: [Link!]!
+  backlinks: [Link!]!
 }
 
 type Link {

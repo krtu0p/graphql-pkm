@@ -298,3 +298,54 @@ func (m *MySQLDB) GetLinksByNote(noteID string) ([]*models.Link, error) {
 	
 	return links, nil
 }
+
+func (m *MySQLDB) DeleteLink(id string) error {
+	result, err := m.db.Exec("DELETE FROM links WHERE id = ?", id)
+	if err != nil {
+		return err
+	}
+	
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	
+	if rowsAffected == 0 {
+		return fmt.Errorf("no link found")
+	}
+	
+	return nil
+}
+
+func (m *MySQLDB) GetBackLinksByNote(noteID string) ([]*models.Link, error) {
+	rows, err := m.db.Query(`
+		Select id, source_note_id, target_note_id, description, created_at
+		FROM links
+		WHERE target_note_id = ?
+		ORDER BY created_at DESC
+		`, noteID)
+	
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var links []*models.Link
+	for rows.Next() {
+		var link models.Link
+		var description sql.NullString
+		
+		err := rows.Scan(&link.ID, &link.SourceNoteID, &link.TargetNoteID, &description, &link.CreatedAt)
+		if err != nil {
+			return nil, err
+		}
+		
+		if description.Valid {
+			link.Description = &description.String
+		}
+		
+		links = append(links, &link)
+	}
+	return links, nil
+	
+}

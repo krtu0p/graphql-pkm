@@ -7,6 +7,7 @@ import (
 	"graphql-pkm/internal/models"
 	"strings"
 	"time"
+
 )
 
 type NoteService struct {
@@ -115,6 +116,58 @@ func (s *NoteService) DeleteNote(id string) error {
 
 func (s *NoteService) GetLinks(noteID string) ([]*models.Link, error) {
 	return s.db.GetLinksByNote(noteID)
+}
+
+func (s *NoteService) CreateLink(sourceNoteID, targetNoteID, description string) (*models.Link, error) {
+	sourceNote, err := s.db.GetNote(sourceNoteID)
+	if err != nil {
+		return nil, err
+	}
+	
+	if sourceNote == nil {
+		return nil, err
+	}
+	
+	targetNote, err := s.db.GetNote(targetNoteID)
+	if err != nil {
+		return nil, err
+	}
+	
+	if targetNote == nil {
+		return nil, err
+	}
+	
+	if sourceNoteID == targetNoteID {
+		return nil, err
+	}
+	
+	id, err := generateId()
+	if err != nil {
+		return nil, err
+	}
+	
+	link := &models.Link{
+		ID: id,
+		SourceNoteID: sourceNoteID,
+		TargetNoteID: targetNoteID,
+		Description: &description,
+		CreatedAt: time.Now(),
+	}
+	
+	err = s.db.CreateLink(link)
+	if err != nil {
+		return nil, err
+	}
+	
+	return link, nil
+}
+
+func (s *NoteService) DeleteLink(linkID string) error {
+	return s.db.DeleteLink(linkID)
+}
+
+func (s *NoteService) GetBackLinks(noteID string) ([]*models.Link, error) {
+	return s.db.GetBackLinksByNote(noteID)
 }
 
 func (s *NoteService) normalizeTags(tags []string) []string {

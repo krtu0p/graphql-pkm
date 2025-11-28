@@ -72,10 +72,12 @@ type ComplexityRoot struct {
 	}
 
 	Note struct {
+		Backlinks   func(childComplexity int) int
 		Content     func(childComplexity int) int
 		CreatedAt   func(childComplexity int) int
 		ID          func(childComplexity int) int
 		KeyConcepts func(childComplexity int) int
+		Links       func(childComplexity int) int
 		Summary     func(childComplexity int) int
 		Tags        func(childComplexity int) int
 		Title       func(childComplexity int) int
@@ -268,6 +270,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.UpdateNote(childComplexity, args["id"].(string), args["input"].(models.UpdateNoteInput)), true
 
+	case "Note.backlinks":
+		if e.complexity.Note.Backlinks == nil {
+			break
+		}
+
+		return e.complexity.Note.Backlinks(childComplexity), true
 	case "Note.content":
 		if e.complexity.Note.Content == nil {
 			break
@@ -292,6 +300,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Note.KeyConcepts(childComplexity), true
+	case "Note.links":
+		if e.complexity.Note.Links == nil {
+			break
+		}
+
+		return e.complexity.Note.Links(childComplexity), true
 	case "Note.summary":
 		if e.complexity.Note.Summary == nil {
 			break
@@ -610,6 +624,8 @@ type Note {
   updatedAt: Time!
   summary: String
   keyConcepts: [String!]!
+  links: [Link!]!
+  backlinks: [Link!]!
 }
 
 type Link {
@@ -974,6 +990,10 @@ func (ec *executionContext) fieldContext_Backlink_sourceNote(_ context.Context, 
 				return ec.fieldContext_Note_summary(ctx, field)
 			case "keyConcepts":
 				return ec.fieldContext_Note_keyConcepts(ctx, field)
+			case "links":
+				return ec.fieldContext_Note_links(ctx, field)
+			case "backlinks":
+				return ec.fieldContext_Note_backlinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Note", field.Name)
 		},
@@ -1225,6 +1245,10 @@ func (ec *executionContext) fieldContext_Mutation_createNote(ctx context.Context
 				return ec.fieldContext_Note_summary(ctx, field)
 			case "keyConcepts":
 				return ec.fieldContext_Note_keyConcepts(ctx, field)
+			case "links":
+				return ec.fieldContext_Note_links(ctx, field)
+			case "backlinks":
+				return ec.fieldContext_Note_backlinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Note", field.Name)
 		},
@@ -1284,6 +1308,10 @@ func (ec *executionContext) fieldContext_Mutation_updateNote(ctx context.Context
 				return ec.fieldContext_Note_summary(ctx, field)
 			case "keyConcepts":
 				return ec.fieldContext_Note_keyConcepts(ctx, field)
+			case "links":
+				return ec.fieldContext_Note_links(ctx, field)
+			case "backlinks":
+				return ec.fieldContext_Note_backlinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Note", field.Name)
 		},
@@ -1669,6 +1697,88 @@ func (ec *executionContext) fieldContext_Note_keyConcepts(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Note_links(ctx context.Context, field graphql.CollectedField, obj *models.Note) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Note_links,
+		func(ctx context.Context) (any, error) {
+			return obj.Links, nil
+		},
+		nil,
+		ec.marshalNLink2ᚕᚖgraphqlᚑpkmᚋinternalᚋmodelsᚐLinkᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Note_links(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Note",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Link_id(ctx, field)
+			case "sourceNoteId":
+				return ec.fieldContext_Link_sourceNoteId(ctx, field)
+			case "targetNoteId":
+				return ec.fieldContext_Link_targetNoteId(ctx, field)
+			case "description":
+				return ec.fieldContext_Link_description(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Link_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Link", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Note_backlinks(ctx context.Context, field graphql.CollectedField, obj *models.Note) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Note_backlinks,
+		func(ctx context.Context) (any, error) {
+			return obj.Backlinks, nil
+		},
+		nil,
+		ec.marshalNLink2ᚕᚖgraphqlᚑpkmᚋinternalᚋmodelsᚐLinkᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Note_backlinks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Note",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Link_id(ctx, field)
+			case "sourceNoteId":
+				return ec.fieldContext_Link_sourceNoteId(ctx, field)
+			case "targetNoteId":
+				return ec.fieldContext_Link_targetNoteId(ctx, field)
+			case "description":
+				return ec.fieldContext_Link_description(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Link_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Link", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_notes(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -1709,6 +1819,10 @@ func (ec *executionContext) fieldContext_Query_notes(_ context.Context, field gr
 				return ec.fieldContext_Note_summary(ctx, field)
 			case "keyConcepts":
 				return ec.fieldContext_Note_keyConcepts(ctx, field)
+			case "links":
+				return ec.fieldContext_Note_links(ctx, field)
+			case "backlinks":
+				return ec.fieldContext_Note_backlinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Note", field.Name)
 		},
@@ -1757,6 +1871,10 @@ func (ec *executionContext) fieldContext_Query_note(ctx context.Context, field g
 				return ec.fieldContext_Note_summary(ctx, field)
 			case "keyConcepts":
 				return ec.fieldContext_Note_keyConcepts(ctx, field)
+			case "links":
+				return ec.fieldContext_Note_links(ctx, field)
+			case "backlinks":
+				return ec.fieldContext_Note_backlinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Note", field.Name)
 		},
@@ -1816,6 +1934,10 @@ func (ec *executionContext) fieldContext_Query_searchNotes(ctx context.Context, 
 				return ec.fieldContext_Note_summary(ctx, field)
 			case "keyConcepts":
 				return ec.fieldContext_Note_keyConcepts(ctx, field)
+			case "links":
+				return ec.fieldContext_Note_links(ctx, field)
+			case "backlinks":
+				return ec.fieldContext_Note_backlinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Note", field.Name)
 		},
@@ -1875,6 +1997,10 @@ func (ec *executionContext) fieldContext_Query_notesByTag(ctx context.Context, f
 				return ec.fieldContext_Note_summary(ctx, field)
 			case "keyConcepts":
 				return ec.fieldContext_Note_keyConcepts(ctx, field)
+			case "links":
+				return ec.fieldContext_Note_links(ctx, field)
+			case "backlinks":
+				return ec.fieldContext_Note_backlinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Note", field.Name)
 		},
@@ -2298,6 +2424,10 @@ func (ec *executionContext) fieldContext_SearchResult_note(_ context.Context, fi
 				return ec.fieldContext_Note_summary(ctx, field)
 			case "keyConcepts":
 				return ec.fieldContext_Note_keyConcepts(ctx, field)
+			case "links":
+				return ec.fieldContext_Note_links(ctx, field)
+			case "backlinks":
+				return ec.fieldContext_Note_backlinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Note", field.Name)
 		},
@@ -2558,6 +2688,10 @@ func (ec *executionContext) fieldContext_Subscription_noteCreated(_ context.Cont
 				return ec.fieldContext_Note_summary(ctx, field)
 			case "keyConcepts":
 				return ec.fieldContext_Note_keyConcepts(ctx, field)
+			case "links":
+				return ec.fieldContext_Note_links(ctx, field)
+			case "backlinks":
+				return ec.fieldContext_Note_backlinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Note", field.Name)
 		},
@@ -2605,6 +2739,10 @@ func (ec *executionContext) fieldContext_Subscription_noteUpdated(_ context.Cont
 				return ec.fieldContext_Note_summary(ctx, field)
 			case "keyConcepts":
 				return ec.fieldContext_Note_keyConcepts(ctx, field)
+			case "links":
+				return ec.fieldContext_Note_links(ctx, field)
+			case "backlinks":
+				return ec.fieldContext_Note_backlinks(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Note", field.Name)
 		},
@@ -4377,6 +4515,16 @@ func (ec *executionContext) _Note(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Note_summary(ctx, field, obj)
 		case "keyConcepts":
 			out.Values[i] = ec._Note_keyConcepts(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "links":
+			out.Values[i] = ec._Note_links(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "backlinks":
+			out.Values[i] = ec._Note_backlinks(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

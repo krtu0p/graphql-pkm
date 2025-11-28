@@ -3,17 +3,17 @@ package ai
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 )
 
-
-func (c *Client) SmartSearch(query string, contextNotes map[string]string) (*SmartSearchResult, error){
+func (c *Client) SmartSearch(query string, contextNotes map[string]string) (*SmartSearchResult, error) {
 	if !c.IsEnabled() {
 		return nil, fmt.Errorf("AI client is not enabled")
 	}
-	
+
 	contextStr := formatNotesForAI(contextNotes)
-	
+
 	prompt := fmt.Sprintf(`
     USER QUERY: "%s"
 
@@ -40,49 +40,66 @@ func (c *Client) SmartSearch(query string, contextNotes map[string]string) (*Sma
         "connections": ["connection1", "connection2"]
     }
     `, query, contextStr)
-	
+
 	request := openRouterChatRequest{
 		Model: c.model,
 		Messages: []openRouterChatMessage{
 			{
-				Role: "system",
-				Content: "You are a knowledge managament assistant. Always response with valid JSON",
+				Role:    "system",
+				Content: "You are a knowledge management assistant. Always respond with valid JSON only.",
 			},
 			{
-				Role: "user",
+				Role:    "user",
 				Content: prompt,
 			},
 		},
-		Stream: false,
+		Stream:    false,
+		MaxTokens: 4096, // 🔥 limit token
 	}
-	
+
 	body, err := c.makeRequest("/chat/completions", request)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var response openRouterChatResponse
 	if err := json.Unmarshal(body, &response); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
-	
+
 	if len(response.Choices) == 0 {
 		return nil, fmt.Errorf("no response from AI")
 	}
-	
+
 	content := response.Choices[0].Message.Content
-	
-	content = strings.TrimSpace(content)
-	content = strings.ReplaceAll(content, "```json", "")
-	content = strings.ReplaceAll(content, "```JSON", "")
-	content = strings.ReplaceAll(content, "```", "")
-	content = strings.TrimSpace(content)
-	
-	var result SmartSearchResult
-	if err := json.Unmarshal([]byte(content), &result); err != nil {
-		return nil, fmt.Errorf("error parsing ai json response")
+	content = cleanAIContent(content)
+
+	// Extract JSON only (super safe)
+	jsonBlock := extractJSON(content)
+	if jsonBlock == "" {
+		return nil, fmt.Errorf("AI did not return valid JSON")
 	}
+
+	var result SmartSearchResult
+	if err := json.Unmarshal([]byte(jsonBlock), &result); err != nil {
+		return nil, fmt.Errorf("error parsing ai json response: %w", err)
+	}
+
 	return &result, nil
+}
+
+func cleanAIContent(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.ReplaceAll(s, "```json", "")
+	s = strings.ReplaceAll(s, "```JSON", "")
+	s = strings.ReplaceAll(s, "```", "")
+	return strings.TrimSpace(s)
+}
+
+func extractJSON(s string) string {
+	// matches the FIRST {...} block even across multiple lines
+	re := regexp.MustCompile(`\{[\s\S]*\}`)
+	return re.FindString(s)
 }
 
 func formatNotesForAI(notes map[string]string) string {

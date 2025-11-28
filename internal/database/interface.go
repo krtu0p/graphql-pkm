@@ -12,6 +12,8 @@ type Database interface {
 	SearchNotes(query string) ([]*models.Note, error)
 	CreateLink(link *models.Link) error
 	GetLinksByNote(noteID string) ([]*models.Link, error)
+	DeleteLink(linkID string) error
+	GetBackLinksByNote(noteID string) ([]*models.Link, error)
 }
 
 var _ Database = (*MemoryDB)(nil)

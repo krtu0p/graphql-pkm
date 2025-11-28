@@ -16,7 +16,6 @@ func NewResolver(noteService *service.NoteService, searchService *service.Search
         searchService: searchService,
     }
 }
-
 func (r *Resolver) Query() generated.QueryResolver {
     return &queryResolver{r}
 }

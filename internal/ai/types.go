@@ -18,6 +18,7 @@ type openRouterChatRequest struct {
 	Model string	`json:"model"`
 	Messages []openRouterChatMessage `json:"messages"`
 	Stream bool `json:"stream"`
+	MaxTokens int `json:"max_tokens,omitempty"`
 }
 
 type openRouterChatMessage struct {

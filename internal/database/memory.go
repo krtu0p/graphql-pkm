@@ -135,3 +135,29 @@ func (db *MemoryDB) SearchNotes(query string) ([]*models.Note, error) {
 	
 	return results, nil
 }
+
+func (db *MemoryDB) DeleteLink(id string) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+	
+	if _, exists := db.links[id]; !exists {
+		return fmt.Errorf("link not found")
+	}
+	
+	delete(db.links, id)
+	return nil
+}
+
+func (db *MemoryDB) GetBackLinksByNote(noteID string) ([]*models.Link, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+	
+	var links []*models.Link
+	for _, link := range db.links {
+		if link.TargetNoteID == noteID {
+			links = append(links, link)
+		}
+	}
+	
+	return links, nil
+}
