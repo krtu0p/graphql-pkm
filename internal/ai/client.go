@@ -16,17 +16,11 @@ type Client struct {
 	baseURL    string
 	httpClient *http.Client
 	model      string
-<<<<<<< HEAD
-	hfToken string
-}
-
-func NewClient(apiKey, baseURL, model, hfToken string) *Client {
-=======
 	jinaToken string
 }
 
 func NewClient(apiKey, baseURL, model, jinaToken string) *Client {
->>>>>>> 3bca154 (+semantic search fix and refine with jina)
+
 	return &Client{
 		apiKey:  apiKey,
 		baseURL: baseURL,
@@ -34,11 +28,8 @@ func NewClient(apiKey, baseURL, model, jinaToken string) *Client {
 		httpClient: &http.Client{
 			Timeout: 60 * time.Second,
 		},
-<<<<<<< HEAD
-		hfToken: hfToken,
-=======
 		jinaToken: jinaToken,
->>>>>>> 3bca154 (+semantic search fix and refine with jina)
+
 	}
 }
 
@@ -84,25 +75,14 @@ func (c *Client) makeRequest(endpoint string, payload interface{}) ([]byte, erro
 	return io.ReadAll(resp.Body)
 }
 
-<<<<<<< HEAD
-// Add these methods to the END of your client.go file
 
-
-// GetEmbedding generates a semantic embedding using Hugging Face (free)
-=======
-
->>>>>>> 3bca154 (+semantic search fix and refine with jina)
 func (c *Client) GetEmbedding(text string) ([]float32, error) {
     url := "https://api.jina.ai/v1/embeddings"
     payload := map[string]interface{}{
         "input": []string{text},
-<<<<<<< HEAD
-        "model": "jina-embeddings-v3",       // bisa diganti model lain
-        "dimensions": 1024,                  // sesuai model
-=======
         "model": "jina-embeddings-v3",      
         "dimensions": 1024,                 
->>>>>>> 3bca154 (+semantic search fix and refine with jina)
+
     }
 
     jsonData, err := json.Marshal(payload)
@@ -115,11 +95,7 @@ func (c *Client) GetEmbedding(text string) ([]float32, error) {
         return nil, err
     }
     req.Header.Set("Content-Type", "application/json")
-<<<<<<< HEAD
-    req.Header.Set("Authorization", "Bearer "+c.hfToken)  // atau c.apiKey kalau itu token Jina
-=======
     req.Header.Set("Authorization", "Bearer "+c.jinaToken)  
->>>>>>> 3bca154 (+semantic search fix and refine with jina)
 
     resp, err := c.httpClient.Do(req)
     if err != nil {
@@ -136,11 +112,6 @@ func (c *Client) GetEmbedding(text string) ([]float32, error) {
         return nil, fmt.Errorf("Jina API error %d: %s", resp.StatusCode, string(body))
     }
 
-<<<<<<< HEAD
-    // response JSON bentuk:
-    // { "data": [ { "embedding": [float,...] } ] }
-=======
->>>>>>> 3bca154 (+semantic search fix and refine with jina)
     var respObj struct {
         Data []struct {
             Embedding []float32 `json:"embedding"`
@@ -155,12 +126,6 @@ func (c *Client) GetEmbedding(text string) ([]float32, error) {
     return respObj.Data[0].Embedding, nil
 }
 
-<<<<<<< HEAD
-
-
-// GenerateEmbedding converts float32 to float64 for compatibility
-=======
->>>>>>> 3bca154 (+semantic search fix and refine with jina)
 func (c *Client) GenerateEmbedding(text string) ([]float64, error) {
 	embed32, err := c.GetEmbedding(text)
 	if err != nil {

@@ -35,11 +35,8 @@ func main() {
 	log.Println("✓ MySQL database connected successfully")
 
 	embeddingsCache := database.NewMySQLEmbeddingsCache(mysqlDB)
-<<<<<<< HEAD
-	aiClient := ai.NewClient(cfg.ApiKey, cfg.ApiUrl, cfg.DefaultModel, cfg.HfToken)
-=======
 	aiClient := ai.NewClient(cfg.ApiKey, cfg.ApiUrl, cfg.DefaultModel, cfg.JinaToken)
->>>>>>> 3bca154 (+semantic search fix and refine with jina)
+
 	
 	noteService := service.NewNoteService(mysqlDB)
 	aiService := service.NewAIService(aiClient, embeddingsCache, noteService)

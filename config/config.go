@@ -12,11 +12,8 @@ type Config struct {
 	ApiUrl      string
 	DefaultModel string
 	DatabaseUrl string
-<<<<<<< HEAD
-	HfToken string
-=======
 	JinaToken string
->>>>>>> 3bca154 (+semantic search fix and refine with jina)
+
 }
 
 func LoadConfig() (*Config, error) {
@@ -34,11 +31,7 @@ func LoadConfig() (*Config, error) {
 		ApiUrl:      getEnv("apiUrl", "https://api.groq.com/openai/v1"),
 		DefaultModel: getEnv("defaultModel", "llama-3.1-8b-instant"),
 		DatabaseUrl: getEnv("dbUrl", "root:password@tcp(localhost:3306)/pkm?parseTime=true"),
-<<<<<<< HEAD
-		HfToken: getEnv("hfToken", ""),
-=======
 		JinaToken: getEnv("jinaToken", ""),
->>>>>>> 3bca154 (+semantic search fix and refine with jina)
 	}, nil
 }
 

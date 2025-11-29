@@ -24,9 +24,7 @@ func NewAIService(aiClient *ai.Client, cache *database.MySQLEmbeddingsCache, not
     }
 }
 
-// ======================================================
-// SEMANTIC SEARCH (SAFE)
-// ======================================================
+
 func (s *AIService) SemanticSearch(query string) ([]*models.SearchResult, error) {
     if !s.aiClient.IsEnabled() {
         return s.fallbackSearch(query)
@@ -50,10 +48,7 @@ func (s *AIService) SemanticSearch(query string) ([]*models.SearchResult, error)
     for _, note := range allNotes {
         embedding, exists := s.embeddingsCache.Get(note.ID)
 
-<<<<<<< HEAD
-        // 1) kalau belum ada di cache → generate
-=======
->>>>>>> 3bca154 (+semantic search fix and refine with jina)
+
         if !exists {
             text := note.Title + " " + note.Content
             embedding, err = s.aiClient.GetEmbedding(text)
@@ -63,18 +58,11 @@ func (s *AIService) SemanticSearch(query string) ([]*models.SearchResult, error)
             s.embeddingsCache.Store(note.ID, embedding)
         }
 
-<<<<<<< HEAD
-        // 2) safety: pastikan dimension sama
-=======
->>>>>>> 3bca154 (+semantic search fix and refine with jina)
         if len(embedding) != len(queryEmbedding) {
             continue
         }
 
-<<<<<<< HEAD
-        // 3) calculate
-=======
->>>>>>> 3bca154 (+semantic search fix and refine with jina)
+
         similarity := cosineSimilarity(queryEmbedding, embedding)
         if similarity > 0.6 {
             results = append(results, &models.SearchResult{
@@ -93,9 +81,6 @@ func (s *AIService) SemanticSearch(query string) ([]*models.SearchResult, error)
     return results, nil
 }
 
-// ======================================================
-// SMART SEARCH
-// ======================================================
 func (s *AIService) SmartSearch(query string) (*models.SmartSearchResponse, error) {
     if !s.aiClient.IsEnabled() {
         return &models.SmartSearchResponse{
@@ -140,9 +125,7 @@ func (s *AIService) SmartSearch(query string) (*models.SmartSearchResponse, erro
     }, nil
 }
 
-// ======================================================
-// HYBRID SEARCH
-// ======================================================
+
 func (s *AIService) HybridSearch(query string) ([]*models.SearchResult, error) {
     var allResults []*models.SearchResult
 
@@ -162,9 +145,7 @@ func (s *AIService) HybridSearch(query string) ([]*models.SearchResult, error) {
     return s.deduplicateResults(allResults), nil
 }
 
-// ======================================================
-// UTILITIES
-// ======================================================
+
 func (s *AIService) deduplicateResults(results []*models.SearchResult) []*models.SearchResult {
     seen := make(map[string]bool)
     var unique []*models.SearchResult
@@ -202,9 +183,6 @@ func (s *AIService) fallbackSearch(query string) ([]*models.SearchResult, error)
     return results, nil
 }
 
-// ======================================================
-// COSINE SAFE
-// ======================================================
 func cosineSimilarity(a, b []float32) float64 {
     if len(a) == 0 || len(b) == 0 {
         return 0
