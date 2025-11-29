@@ -3,8 +3,6 @@ package ai
 import (
 	"encoding/json"
 	"fmt"
-	"regexp"
-	"strings"
 )
 
 func (c *Client) SmartSearch(query string, contextNotes map[string]string) (*SmartSearchResult, error) {
@@ -54,7 +52,7 @@ func (c *Client) SmartSearch(query string, contextNotes map[string]string) (*Sma
 			},
 		},
 		Stream:    false,
-		MaxTokens: 4096, // 🔥 limit token
+		MaxTokens: 4096, 
 	}
 
 	body, err := c.makeRequest("/chat/completions", request)
@@ -74,7 +72,6 @@ func (c *Client) SmartSearch(query string, contextNotes map[string]string) (*Sma
 	content := response.Choices[0].Message.Content
 	content = cleanAIContent(content)
 
-	// Extract JSON only (super safe)
 	jsonBlock := extractJSON(content)
 	if jsonBlock == "" {
 		return nil, fmt.Errorf("AI did not return valid JSON")
@@ -88,27 +85,4 @@ func (c *Client) SmartSearch(query string, contextNotes map[string]string) (*Sma
 	return &result, nil
 }
 
-func cleanAIContent(s string) string {
-	s = strings.TrimSpace(s)
-	s = strings.ReplaceAll(s, "```json", "")
-	s = strings.ReplaceAll(s, "```JSON", "")
-	s = strings.ReplaceAll(s, "```", "")
-	return strings.TrimSpace(s)
-}
 
-func extractJSON(s string) string {
-	// matches the FIRST {...} block even across multiple lines
-	re := regexp.MustCompile(`\{[\s\S]*\}`)
-	return re.FindString(s)
-}
-
-func formatNotesForAI(notes map[string]string) string {
-	var sb strings.Builder
-	for id, content := range notes {
-		if len(content) > 500 {
-			content = content[:500] + "..."
-		}
-		sb.WriteString(fmt.Sprintf("Notes %s: %s\n", id, content))
-	}
-	return sb.String()
-}

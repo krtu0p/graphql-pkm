@@ -18,7 +18,7 @@ A GraphQL-based Personal Knowledge Management system with AI-powered search and 
 - **Backend**: Go 1.21+
 - **GraphQL**: gqlgen
 - **AI**: Groq API integration (ultra-fast inference)
-- **Database**: MySQL (with in-memory fallback option)
+- **Database**: MySQL 5.7+ / MariaDB 10.2+
 - **Caching**: MySQL-based embedding cache
 - **Configuration**: godotenv
 
@@ -153,18 +153,16 @@ query {
     content
     tags
     summary
-    keyTopics
+    keyConcepts
     links {
       id
-      targetNote {
-        title
-      }
+      targetNoteId
+      description
     }
     backlinks {
       id
-      sourceNote {
-        title
-      }
+      sourceNoteId
+      description
     }
   }
 }
@@ -274,13 +272,15 @@ query {
 
 ### Smart Linking System
 
+The linking system enables you to create a knowledge graph by connecting related notes bidirectionally.
+
 #### Create a Link Between Notes
 ```graphql
 mutation {
   linkNotes(
-    sourceId: "note_abc123"
-    targetId: "note_def456"
-    description: "Related concept - prerequisite knowledge"
+    sourceId: "683b9e869e5b8965550ac605e8e035bf"
+    targetId: "07be3a74f128355209eff2c4b0aa03f5"
+    description: "Alternative approach to REST - compare design philosophies"
   ) {
     id
     sourceNoteId
@@ -291,63 +291,58 @@ mutation {
 }
 ```
 
-#### Get Outgoing Links
-Get all links where this note is the source:
+#### View Note with All Connections
 ```graphql
 query {
-  noteLinks(noteId: "note_abc123") {
+  note(id: "683b9e869e5b8965550ac605e8e035bf") {
     id
-    description
-    targetNote {
+    title
+    content
+    
+    # Outgoing links (notes this one points to)
+    links {
       id
-      title
-      content
+      targetNoteId
+      description
+      createdAt
+    }
+    
+    # Incoming links (notes that point to this one)
+    backlinks {
+      id
+      sourceNoteId
+      description
+      createdAt
     }
   }
 }
 ```
 
-#### Get Backlinks (Incoming Links)
-Get all links pointing to this note:
+#### Query Links Directly
+Get all outgoing links from a note:
 ```graphql
 query {
-  noteBacklinks(noteId: "note_abc123") {
+  links(noteId: "683b9e869e5b8965550ac605e8e035bf") {
     id
+    targetNoteId
     description
+    createdAt
+  }
+}
+```
+
+Get all backlinks (incoming links) to a note:
+```graphql
+query {
+  backlinks(noteId: "683b9e869e5b8965550ac605e8e035bf") {
+    id
     sourceNote {
       id
       title
       content
     }
-  }
-}
-```
-
-#### Get Note with All Connections
-```graphql
-query {
-  note(id: "note_abc123") {
-    id
-    title
-    content
-    
-    # Outgoing links
-    links {
-      description
-      targetNote {
-        id
-        title
-      }
-    }
-    
-    # Incoming links (backlinks)
-    backlinks {
-      description
-      sourceNote {
-        id
-        title
-      }
-    }
+    description
+    createdAt
   }
 }
 ```
@@ -355,17 +350,73 @@ query {
 #### Delete a Link
 ```graphql
 mutation {
-  unlinkNotes(linkId: "link_xyz789")
+  unlinkNotes(linkId: "c0ec2f441ac251163543e12d9c6992c9")
 }
 ```
 
-### Link Features
+### Link System Features
 
-- **Bidirectional tracking**: Automatically track both outgoing links and backlinks
-- **Optional descriptions**: Add context to explain relationships
-- **Cascade deletion**: Links automatically removed when notes are deleted
-- **Self-link prevention**: System prevents linking a note to itself
-- **Validation**: Both source and target notes must exist
+- **Bidirectional Tracking**: Automatically tracks both outgoing links and backlinks
+- **Optional Descriptions**: Add context explaining the relationship between notes
+- **Cascade Deletion**: Links automatically removed when notes are deleted (database constraint)
+- **Self-Link Prevention**: System prevents linking a note to itself
+- **Validation**: Both source and target notes must exist before creating a link
+- **Field Resolvers**: Links and backlinks are lazily loaded only when requested
+
+### Example: Building a Knowledge Graph
+
+```graphql
+# 1. Create notes about related topics
+mutation {
+  note1: createNote(input: {
+    title: "Programming Fundamentals"
+    content: "Variables, loops, functions"
+    tags: ["programming", "basics"]
+  }) { id }
+  
+  note2: createNote(input: {
+    title: "Object-Oriented Programming"
+    content: "Classes, objects, inheritance"
+    tags: ["programming", "oop"]
+  }) { id }
+  
+  note3: createNote(input: {
+    title: "Design Patterns"
+    content: "Common solutions to recurring problems"
+    tags: ["programming", "architecture"]
+  }) { id }
+}
+
+# 2. Link them together
+mutation {
+  link1: linkNotes(
+    sourceId: "fundamentals_id"
+    targetId: "oop_id"
+    description: "OOP builds upon fundamental programming concepts"
+  ) { id }
+  
+  link2: linkNotes(
+    sourceId: "oop_id"
+    targetId: "patterns_id"
+    description: "Design patterns are best practices in OOP"
+  ) { id }
+}
+
+# 3. Explore the knowledge graph
+query {
+  note(id: "oop_id") {
+    title
+    backlinks {
+      sourceNoteId
+      description
+    }
+    links {
+      targetNoteId
+      description
+    }
+  }
+}
+```
 
 ## Project Structure
 
@@ -376,25 +427,31 @@ graphql-pkm/
 │       └── main.go              # Application entry point
 ├── internal/
 │   ├── gql/
-│   │   ├── generated/           # Generated GraphQL code
-│   │   ├── models/              # GraphQL models
-│   │   ├── resolvers/           # Query/Mutation resolvers
+│   │   ├── generated/
+│   │   │   └── generated.go     # Generated GraphQL interfaces
+│   │   ├── resolvers/
+│   │   │   ├── resolver.go      # Resolver struct & registration
+│   │   │   ├── query.go         # Query resolvers
+│   │   │   ├── mutation.go      # Mutation resolvers
+│   │   │   ├── note.go          # Note field resolvers (links/backlinks)
+│   │   │   ├── search.go        # Search resolvers
+│   │   │   └── subscription.go  # Subscription resolvers
 │   │   └── schema.graphqls      # GraphQL schema definition
 │   ├── ai/
-│   │   └── client.go            # OpenRouter AI client
+│   │   └── client.go            # Groq AI client
 │   ├── database/
 │   │   ├── interface.go         # Database interface
 │   │   ├── mysql.go             # MySQL implementation
-│   │   ├── memory.go            # In-memory implementation
-│   │   └── embeddings_cache.go  # Embedding cache
+│   │   └── memory.go            # In-memory fallback
 │   ├── models/
-│   │   └── models.go            # Domain models
+│   │   └── models.go            # Domain models (Note, Link, etc.)
 │   └── service/
 │       ├── noteService.go       # Note business logic
 │       ├── aiService.go         # AI operations
 │       └── searchService.go     # Search logic
 ├── config/
 │   └── config.go                # Configuration management
+├── gqlgen.yml                   # gqlgen configuration
 ├── .env                         # Environment variables
 ├── go.mod                       # Go dependencies
 └── README.md
@@ -421,8 +478,9 @@ extend type Query {
 go run github.com/99designs/gqlgen generate
 ```
 
-3. **Implement resolver**:
+3. **Implement resolver** in appropriate file:
 ```go
+// internal/gql/resolvers/query.go
 func (r *queryResolver) NewQuery(ctx context.Context) (*models.NewType, error) {
     // Implementation
 }
@@ -431,6 +489,40 @@ func (r *queryResolver) NewQuery(ctx context.Context) (*models.NewType, error) {
 4. **Add service layer logic** if needed
 
 5. **Test the new feature**
+
+### Code Generation Best Practices
+
+The project uses a **manual model + generated interface** approach:
+
+**DO:**
+- Define models in `internal/models/models.go`
+- Let gqlgen generate only interfaces in `internal/gql/generated/`
+- Split resolvers into logical files (query.go, mutation.go, etc.)
+- Use field resolvers for computed or related data (like links/backlinks)
+
+**DON'T:**
+- ❌ Let gqlgen generate models (causes conflicts with database layer)
+- ❌ Put all resolvers in one file (hard to maintain)
+- ❌ Modify generated files manually (they'll be overwritten)
+
+### gqlgen Configuration
+
+Key parts of `gqlgen.yml`:
+
+```yaml
+# Use our custom models, don't generate them
+autobind:
+  - "graphql-pkm/internal/models"
+
+models:
+  Note:
+    model: graphql-pkm/internal/models.Note
+    fields:
+      links:
+        resolver: true      # Generate field resolver
+      backlinks:
+        resolver: true      # Generate field resolver
+```
 
 ### Testing
 
@@ -486,6 +578,50 @@ DELETE FROM embeddings_cache;
 
 -- Clear specific note
 DELETE FROM embeddings_cache WHERE note_id = 'your_note_id';
+```
+
+## Database Schema
+
+### Notes Table
+```sql
+CREATE TABLE notes (
+  id VARCHAR(36) PRIMARY KEY,
+  title TEXT NOT NULL,
+  content LONGTEXT NOT NULL,
+  tags JSON,
+  created_at DATETIME(6) NOT NULL,
+  updated_at DATETIME(6) NOT NULL,
+  summary TEXT,
+  key_concepts JSON,
+  INDEX idx_created_at (created_at),
+  INDEX idx_updated_at (updated_at)
+);
+```
+
+### Links Table
+```sql
+CREATE TABLE links (
+  id VARCHAR(36) PRIMARY KEY,
+  source_note_id VARCHAR(36) NOT NULL,
+  target_note_id VARCHAR(36) NOT NULL,
+  description TEXT,
+  created_at DATETIME(6) NOT NULL,
+  FOREIGN KEY (source_note_id) REFERENCES notes(id) ON DELETE CASCADE,
+  FOREIGN KEY (target_note_id) REFERENCES notes(id) ON DELETE CASCADE,
+  INDEX idx_source_note (source_note_id),
+  INDEX idx_target_note (target_note_id)
+);
+```
+
+### Embeddings Cache Table
+```sql
+CREATE TABLE embeddings_cache (
+  note_id VARCHAR(36) PRIMARY KEY,
+  embedding_json JSON NOT NULL,
+  created_at DATETIME(6) NOT NULL,
+  updated_at DATETIME(6) NOT NULL,
+  FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE
+);
 ```
 
 ## Deployment
@@ -559,17 +695,7 @@ docker-compose up -d
 - Monitor API costs
 - Set up logging
 - Use connection pooling
-
-### Environment Variables (Production)
-
-```bash
-PORT=8080
-ENVIRONMENT=production
-apiKey=gsk_your_production_groq_key
-apiUrl=https://api.groq.com/openai/v1
-defaultModel=llama-3.3-70b-versatile
-dbUrl=user:secure_password@tcp(db-host:3306)/pkm?parseTime=true
-```
+- Enable database indices (auto-created)
 
 ## Performance Optimization
 
@@ -585,9 +711,11 @@ The system automatically creates indexes on:
 ### Query Optimization Tips
 
 1. **Use specific fields** instead of fetching all data
-2. **Leverage the cache** by searching similar queries
-3. **Batch operations** when creating multiple notes
-4. **Use tags** for quick filtering
+2. **Leverage field resolvers** - links/backlinks are only loaded when requested
+3. **Use the embedding cache** for repeated searches
+4. **Batch operations** when creating multiple notes
+5. **Use tags** for quick filtering
+6. **Leverage database indexes** for fast lookups
 
 ## Troubleshooting
 
@@ -603,7 +731,23 @@ SHOW DATABASES;
 # Verify tables
 USE pkm;
 SHOW TABLES;
+DESCRIBE notes;
+DESCRIBE links;
 ```
+
+### Link-Related Issues
+
+**Links not appearing in queries?**
+- Ensure you have the `Note()` resolver method in `resolver.go`
+- Check that `note.go` field resolvers exist
+- Verify `links` and `backlinks` have `resolver: true` in `gqlgen.yml`
+- Regenerate with: `go run github.com/99designs/gqlgen generate`
+
+**Can't create links?**
+- Both notes must exist before linking
+- Check that both note IDs are correct
+- Cannot link a note to itself
+- Check MySQL foreign key constraints
 
 ### AI Features Not Working
 
@@ -626,6 +770,20 @@ kill -9 <PID>
 PORT=8081
 ```
 
+### gqlgen Generation Errors
+
+```bash
+# Clean regeneration
+rm internal/gql/generated/generated.go
+go run github.com/99designs/gqlgen generate
+
+# Verbose output
+go run github.com/99designs/gqlgen generate --verbose
+
+# Check for duplicate resolver methods
+grep -r "func (r \*queryResolver)" internal/gql/resolvers/
+```
+
 ## Contributing
 
 1. Fork the repository
@@ -638,13 +796,9 @@ PORT=8081
 
 MIT License - see LICENSE file for details
 
-## Support
-
--  Email: support@example.com
--  Issues: [GitHub Issues](https://github.com/yourusername/graphql-pkm/issues)
-
 ## Acknowledgments
 
-- [gqlgen](https://github.com/99designs/gqlgen) - GraphQL server library
+- [gqlgen](https://github.com/99designs/gqlgen) - GraphQL server library for Go
 - [Groq](https://groq.com) - Ultra-fast AI inference platform
-- Built using Go
+- [MySQL](https://www.mysql.com) / [MariaDB](https://mariadb.org) - Reliable database systems
+- Built with Go

@@ -19,16 +19,13 @@ import (
 )
 
 func main() {
-	// Load environment variables
 	_ = godotenv.Load()
 
-	// Load config
 	cfg, err := config.LoadConfig()
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	// Initialize MySQL database
 	mysqlDB, err := database.NewMySQLDB(cfg.DatabaseUrl)
 	if err != nil {
 		log.Fatalf("Failed to connect to MySQL: %v", err)
@@ -37,11 +34,9 @@ func main() {
 
 	log.Println("✓ MySQL database connected successfully")
 
-	// Initialize dependencies - USE MYSQL INSTEAD OF MEMORY!
 	embeddingsCache := database.NewMySQLEmbeddingsCache(mysqlDB)
-	aiClient := ai.NewClient(cfg.ApiKey, cfg.ApiUrl, cfg.DefaultModel)
+	aiClient := ai.NewClient(cfg.ApiKey, cfg.ApiUrl, cfg.DefaultModel, cfg.JinaToken)
 	
-	// CRITICAL FIX: Pass mysqlDB instead of creating a new MemoryDB
 	noteService := service.NewNoteService(mysqlDB)
 	aiService := service.NewAIService(aiClient, embeddingsCache, noteService)
 	searchService := service.NewSearchService(noteService, aiService)
