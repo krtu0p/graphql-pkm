@@ -12,6 +12,7 @@ type Config struct {
 	ApiUrl      string
 	DefaultModel string
 	DatabaseUrl string
+	HfToken string
 }
 
 func LoadConfig() (*Config, error) {
@@ -29,6 +30,7 @@ func LoadConfig() (*Config, error) {
 		ApiUrl:      getEnv("apiUrl", "https://api.groq.com/openai/v1"),
 		DefaultModel: getEnv("defaultModel", "llama-3.1-8b-instant"),
 		DatabaseUrl: getEnv("dbUrl", "root:password@tcp(localhost:3306)/pkm?parseTime=true"),
+		HfToken: getEnv("hfToken", ""),
 	}, nil
 }
 

@@ -1,8 +1,10 @@
 package service
 
 import (
+    "fmt"
     "math"
     "sort"
+
     "graphql-pkm/internal/ai"
     "graphql-pkm/internal/database"
     "graphql-pkm/internal/models"
@@ -22,36 +24,50 @@ func NewAIService(aiClient *ai.Client, cache *database.MySQLEmbeddingsCache, not
     }
 }
 
+// ======================================================
+// SEMANTIC SEARCH (SAFE)
+// ======================================================
 func (s *AIService) SemanticSearch(query string) ([]*models.SearchResult, error) {
     if !s.aiClient.IsEnabled() {
         return s.fallbackSearch(query)
     }
-    
+
     queryEmbedding, err := s.aiClient.GetEmbedding(query)
     if err != nil {
         return nil, err
     }
-    
+    if len(queryEmbedding) == 0 {
+        return nil, fmt.Errorf("query embedding empty")
+    }
+
     allNotes, err := s.noteService.GetAllNotes()
     if err != nil {
         return nil, err
     }
-    
+
     var results []*models.SearchResult
-    
+
     for _, note := range allNotes {
         embedding, exists := s.embeddingsCache.Get(note.ID)
+
+        // 1) kalau belum ada di cache → generate
         if !exists {
             text := note.Title + " " + note.Content
             embedding, err = s.aiClient.GetEmbedding(text)
-            if err != nil {
+            if err != nil || len(embedding) == 0 {
                 continue
             }
             s.embeddingsCache.Store(note.ID, embedding)
         }
-        
+
+        // 2) safety: pastikan dimension sama
+        if len(embedding) != len(queryEmbedding) {
+            continue
+        }
+
+        // 3) calculate
         similarity := cosineSimilarity(queryEmbedding, embedding)
-        if similarity > 0.7 {
+        if similarity > 0.6 {
             results = append(results, &models.SearchResult{
                 Note:      note,
                 Score:     similarity,
@@ -60,14 +76,17 @@ func (s *AIService) SemanticSearch(query string) ([]*models.SearchResult, error)
             })
         }
     }
-    
+
     sort.Slice(results, func(i, j int) bool {
         return results[i].Score > results[j].Score
     })
-    
+
     return results, nil
 }
 
+// ======================================================
+// SMART SEARCH
+// ======================================================
 func (s *AIService) SmartSearch(query string) (*models.SmartSearchResponse, error) {
     if !s.aiClient.IsEnabled() {
         return &models.SmartSearchResponse{
@@ -75,22 +94,22 @@ func (s *AIService) SmartSearch(query string) (*models.SmartSearchResponse, erro
             Explanation: "AI features are disabled",
         }, nil
     }
-    
+
     contextNotes, _ := s.noteService.SearchNotes(query)
     if len(contextNotes) > 10 {
         contextNotes = contextNotes[:10]
     }
-    
+
     contextMap := make(map[string]string)
     for _, note := range contextNotes {
         contextMap[note.ID] = note.Title + ": " + note.Content
     }
-    
+
     aiResult, err := s.aiClient.SmartSearch(query, contextMap)
     if err != nil {
         return nil, err
     }
-    
+
     var results []*models.SearchResult
     for _, aiNote := range aiResult.RelevantNotes {
         note, err := s.noteService.GetNote(aiNote.NoteID)
@@ -103,7 +122,7 @@ func (s *AIService) SmartSearch(query string) (*models.SmartSearchResponse, erro
             })
         }
     }
-    
+
     return &models.SmartSearchResponse{
         Results:     results,
         Explanation: aiResult.Explanation,
@@ -112,9 +131,12 @@ func (s *AIService) SmartSearch(query string) (*models.SmartSearchResponse, erro
     }, nil
 }
 
+// ======================================================
+// HYBRID SEARCH
+// ======================================================
 func (s *AIService) HybridSearch(query string) ([]*models.SearchResult, error) {
     var allResults []*models.SearchResult
-    
+
     keywordNotes, _ := s.noteService.SearchNotes(query)
     for _, note := range keywordNotes {
         allResults = append(allResults, &models.SearchResult{
@@ -124,28 +146,31 @@ func (s *AIService) HybridSearch(query string) ([]*models.SearchResult, error) {
             MatchType: "keyword",
         })
     }
-    
+
     semanticResults, _ := s.SemanticSearch(query)
     allResults = append(allResults, semanticResults...)
-    
+
     return s.deduplicateResults(allResults), nil
 }
 
+// ======================================================
+// UTILITIES
+// ======================================================
 func (s *AIService) deduplicateResults(results []*models.SearchResult) []*models.SearchResult {
     seen := make(map[string]bool)
     var unique []*models.SearchResult
-    
+
     for _, result := range results {
         if !seen[result.Note.ID] {
             seen[result.Note.ID] = true
             unique = append(unique, result)
         }
     }
-    
+
     sort.Slice(unique, func(i, j int) bool {
         return unique[i].Score > unique[j].Score
     })
-    
+
     return unique
 }
 
@@ -154,7 +179,7 @@ func (s *AIService) fallbackSearch(query string) ([]*models.SearchResult, error)
     if err != nil {
         return nil, err
     }
-    
+
     var results []*models.SearchResult
     for _, note := range notes {
         results = append(results, &models.SearchResult{
@@ -164,19 +189,30 @@ func (s *AIService) fallbackSearch(query string) ([]*models.SearchResult, error)
             MatchType: "keyword",
         })
     }
-    
+
     return results, nil
 }
 
+// ======================================================
+// COSINE SAFE
+// ======================================================
 func cosineSimilarity(a, b []float32) float64 {
-    var dotProduct, normA, normB float64
-    for i := range a {
-        dotProduct += float64(a[i] * b[i])
+    if len(a) == 0 || len(b) == 0 {
+        return 0
+    }
+    if len(a) != len(b) {
+        return 0
+    }
+
+    var dot, normA, normB float64
+    for i := 0; i < len(a); i++ {
+        dot += float64(a[i] * b[i])
         normA += float64(a[i] * a[i])
         normB += float64(b[i] * b[i])
     }
+
     if normA == 0 || normB == 0 {
         return 0
     }
-    return dotProduct / (math.Sqrt(normA) * math.Sqrt(normB))
+    return dot / (math.Sqrt(normA) * math.Sqrt(normB))
 }

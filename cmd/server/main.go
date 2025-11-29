@@ -39,7 +39,7 @@ func main() {
 
 	// Initialize dependencies - USE MYSQL INSTEAD OF MEMORY!
 	embeddingsCache := database.NewMySQLEmbeddingsCache(mysqlDB)
-	aiClient := ai.NewClient(cfg.ApiKey, cfg.ApiUrl, cfg.DefaultModel)
+	aiClient := ai.NewClient(cfg.ApiKey, cfg.ApiUrl, cfg.DefaultModel, cfg.HfToken)
 	
 	// CRITICAL FIX: Pass mysqlDB instead of creating a new MemoryDB
 	noteService := service.NewNoteService(mysqlDB)

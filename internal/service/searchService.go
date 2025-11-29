@@ -4,13 +4,13 @@ import "graphql-pkm/internal/models"
 
 type SearchService struct {
 	noteService *NoteService
-	aiService *AIService
+	aiService   *AIService
 }
 
 func NewSearchService(noteService *NoteService, aiService *AIService) *SearchService {
 	return &SearchService{
 		noteService: noteService,
-		aiService: aiService,
+		aiService:   aiService,
 	}
 }
 

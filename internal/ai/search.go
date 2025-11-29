@@ -3,8 +3,6 @@ package ai
 import (
 	"encoding/json"
 	"fmt"
-	"regexp"
-	"strings"
 )
 
 func (c *Client) SmartSearch(query string, contextNotes map[string]string) (*SmartSearchResult, error) {
@@ -88,27 +86,4 @@ func (c *Client) SmartSearch(query string, contextNotes map[string]string) (*Sma
 	return &result, nil
 }
 
-func cleanAIContent(s string) string {
-	s = strings.TrimSpace(s)
-	s = strings.ReplaceAll(s, "```json", "")
-	s = strings.ReplaceAll(s, "```JSON", "")
-	s = strings.ReplaceAll(s, "```", "")
-	return strings.TrimSpace(s)
-}
 
-func extractJSON(s string) string {
-	// matches the FIRST {...} block even across multiple lines
-	re := regexp.MustCompile(`\{[\s\S]*\}`)
-	return re.FindString(s)
-}
-
-func formatNotesForAI(notes map[string]string) string {
-	var sb strings.Builder
-	for id, content := range notes {
-		if len(content) > 500 {
-			content = content[:500] + "..."
-		}
-		sb.WriteString(fmt.Sprintf("Notes %s: %s\n", id, content))
-	}
-	return sb.String()
-}
