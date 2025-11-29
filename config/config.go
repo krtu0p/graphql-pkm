@@ -13,6 +13,7 @@ type Config struct {
 	DefaultModel string
 	DatabaseUrl string
 	JinaToken string
+
 }
 
 func LoadConfig() (*Config, error) {

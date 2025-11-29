@@ -20,6 +20,7 @@ type Client struct {
 }
 
 func NewClient(apiKey, baseURL, model, jinaToken string) *Client {
+
 	return &Client{
 		apiKey:  apiKey,
 		baseURL: baseURL,
@@ -28,6 +29,7 @@ func NewClient(apiKey, baseURL, model, jinaToken string) *Client {
 			Timeout: 60 * time.Second,
 		},
 		jinaToken: jinaToken,
+
 	}
 }
 
@@ -80,6 +82,7 @@ func (c *Client) GetEmbedding(text string) ([]float32, error) {
         "input": []string{text},
         "model": "jina-embeddings-v3",      
         "dimensions": 1024,                 
+
     }
 
     jsonData, err := json.Marshal(payload)

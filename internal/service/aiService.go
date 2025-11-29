@@ -24,6 +24,7 @@ func NewAIService(aiClient *ai.Client, cache *database.MySQLEmbeddingsCache, not
     }
 }
 
+
 func (s *AIService) SemanticSearch(query string) ([]*models.SearchResult, error) {
     if !s.aiClient.IsEnabled() {
         return s.fallbackSearch(query)
@@ -47,6 +48,7 @@ func (s *AIService) SemanticSearch(query string) ([]*models.SearchResult, error)
     for _, note := range allNotes {
         embedding, exists := s.embeddingsCache.Get(note.ID)
 
+
         if !exists {
             text := note.Title + " " + note.Content
             embedding, err = s.aiClient.GetEmbedding(text)
@@ -59,6 +61,7 @@ func (s *AIService) SemanticSearch(query string) ([]*models.SearchResult, error)
         if len(embedding) != len(queryEmbedding) {
             continue
         }
+
 
         similarity := cosineSimilarity(queryEmbedding, embedding)
         if similarity > 0.6 {
@@ -122,6 +125,7 @@ func (s *AIService) SmartSearch(query string) (*models.SmartSearchResponse, erro
     }, nil
 }
 
+
 func (s *AIService) HybridSearch(query string) ([]*models.SearchResult, error) {
     var allResults []*models.SearchResult
 
@@ -140,6 +144,7 @@ func (s *AIService) HybridSearch(query string) ([]*models.SearchResult, error) {
 
     return s.deduplicateResults(allResults), nil
 }
+
 
 func (s *AIService) deduplicateResults(results []*models.SearchResult) []*models.SearchResult {
     seen := make(map[string]bool)

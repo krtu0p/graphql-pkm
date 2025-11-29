@@ -36,6 +36,7 @@ func main() {
 
 	embeddingsCache := database.NewMySQLEmbeddingsCache(mysqlDB)
 	aiClient := ai.NewClient(cfg.ApiKey, cfg.ApiUrl, cfg.DefaultModel, cfg.JinaToken)
+
 	
 	noteService := service.NewNoteService(mysqlDB)
 	aiService := service.NewAIService(aiClient, embeddingsCache, noteService)
