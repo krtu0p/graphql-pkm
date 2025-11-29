@@ -26,8 +26,8 @@ func LoadConfig() (*Config, error) {
 		Port:        port,
 		Environment: getEnv("ENVIRONMENT", "development"),
 		ApiKey:      getEnv("apiKey", ""),
-		ApiUrl:      getEnv("apiUrl", "https://openrouter.ai/api/v1"),
-		DefaultModel: getEnv("defaultModel", "deepseek/deepseek-coder:33b-instruct"),
+		ApiUrl:      getEnv("apiUrl", "https://api.groq.com/openai/v1"),
+		DefaultModel: getEnv("defaultModel", "llama-3.1-8b-instant"),
 		DatabaseUrl: getEnv("dbUrl", "root:password@tcp(localhost:3306)/pkm?parseTime=true"),
 	}, nil
 }

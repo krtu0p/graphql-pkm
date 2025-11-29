@@ -40,6 +40,7 @@ type Config struct {
 
 type ResolverRoot interface {
 	Mutation() MutationResolver
+	Note() NoteResolver
 	Query() QueryResolver
 	Subscription() SubscriptionResolver
 }
@@ -122,6 +123,10 @@ type MutationResolver interface {
 	DeleteNote(ctx context.Context, id string) (bool, error)
 	LinkNotes(ctx context.Context, sourceID string, targetID string, description *string) (*models.Link, error)
 	UnlinkNotes(ctx context.Context, linkID string) (bool, error)
+}
+type NoteResolver interface {
+	Links(ctx context.Context, obj *models.Note) ([]*models.Link, error)
+	Backlinks(ctx context.Context, obj *models.Note) ([]*models.Link, error)
 }
 type QueryResolver interface {
 	Notes(ctx context.Context) ([]*models.Note, error)
@@ -1704,7 +1709,7 @@ func (ec *executionContext) _Note_links(ctx context.Context, field graphql.Colle
 		field,
 		ec.fieldContext_Note_links,
 		func(ctx context.Context) (any, error) {
-			return obj.Links, nil
+			return ec.resolvers.Note().Links(ctx, obj)
 		},
 		nil,
 		ec.marshalNLink2ᚕᚖgraphqlᚑpkmᚋinternalᚋmodelsᚐLinkᚄ,
@@ -1717,8 +1722,8 @@ func (ec *executionContext) fieldContext_Note_links(_ context.Context, field gra
 	fc = &graphql.FieldContext{
 		Object:     "Note",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -1745,7 +1750,7 @@ func (ec *executionContext) _Note_backlinks(ctx context.Context, field graphql.C
 		field,
 		ec.fieldContext_Note_backlinks,
 		func(ctx context.Context) (any, error) {
-			return obj.Backlinks, nil
+			return ec.resolvers.Note().Backlinks(ctx, obj)
 		},
 		nil,
 		ec.marshalNLink2ᚕᚖgraphqlᚑpkmᚋinternalᚋmodelsᚐLinkᚄ,
@@ -1758,8 +1763,8 @@ func (ec *executionContext) fieldContext_Note_backlinks(_ context.Context, field
 	fc = &graphql.FieldContext{
 		Object:     "Note",
 		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
+		IsMethod:   true,
+		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
@@ -4484,50 +4489,112 @@ func (ec *executionContext) _Note(ctx context.Context, sel ast.SelectionSet, obj
 		case "id":
 			out.Values[i] = ec._Note_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "title":
 			out.Values[i] = ec._Note_title(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "content":
 			out.Values[i] = ec._Note_content(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "tags":
 			out.Values[i] = ec._Note_tags(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "createdAt":
 			out.Values[i] = ec._Note_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "updatedAt":
 			out.Values[i] = ec._Note_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "summary":
 			out.Values[i] = ec._Note_summary(ctx, field, obj)
 		case "keyConcepts":
 			out.Values[i] = ec._Note_keyConcepts(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
-				out.Invalids++
+				atomic.AddUint32(&out.Invalids, 1)
 			}
 		case "links":
-			out.Values[i] = ec._Note_links(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Note_links(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		case "backlinks":
-			out.Values[i] = ec._Note_backlinks(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Note_backlinks(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
 			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

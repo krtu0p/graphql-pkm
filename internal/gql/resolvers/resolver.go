@@ -16,6 +16,7 @@ func NewResolver(noteService *service.NoteService, searchService *service.Search
         searchService: searchService,
     }
 }
+
 func (r *Resolver) Query() generated.QueryResolver {
     return &queryResolver{r}
 }
@@ -28,6 +29,11 @@ func (r *Resolver) Subscription() generated.SubscriptionResolver {
     return &subscriptionResolver{r}
 }
 
+func (r *Resolver) Note() generated.NoteResolver {
+    return &noteResolver{r}
+}
+
 type queryResolver struct{ *Resolver }
 type mutationResolver struct{ *Resolver }
 type subscriptionResolver struct{ *Resolver }
+type noteResolver struct{ *Resolver }

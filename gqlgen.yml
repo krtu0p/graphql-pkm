@@ -1,12 +1,25 @@
 schema:
   - internal/gql/schema.graphqls
+
 exec:
   filename: internal/gql/generated/generated.go
-model:
-  filename: internal/models/types.go
+  package: generated
+
+# Don't generate models, we'll provide our own
+# Remove or comment out the model section
+# model:
+#   filename: internal/models/types.go
+
 resolver:
-  filename: internal/gql/resolvers/resolver.go
+  layout: follow-schema
+  dir: internal/gql/resolvers
+  package: resolvers
   type: Resolver
+
+# Autobind existing models from your codebase
+autobind:
+  - "graphql-pkm/internal/models"
+
 models:
   ID:
     model:
@@ -19,3 +32,27 @@ models:
       - github.com/99designs/gqlgen/graphql.Int
       - github.com/99designs/gqlgen/graphql.Int64
       - github.com/99designs/gqlgen/graphql.Int32
+  
+  # Map GraphQL types to your existing models
+  Note:
+    model: graphql-pkm/internal/models.Note
+    fields:
+      links:
+        resolver: true
+      backlinks:
+        resolver: true
+  
+  Link:
+    model: graphql-pkm/internal/models.Link
+  
+  CreateNoteInput:
+    model: graphql-pkm/internal/models.CreateNoteInput
+  
+  UpdateNoteInput:
+    model: graphql-pkm/internal/models.UpdateNoteInput
+  
+  SearchResult:
+    model: graphql-pkm/internal/models.SearchResult
+  
+  SmartSearchResponse:
+    model: graphql-pkm/internal/models.SmartSearchResponse
