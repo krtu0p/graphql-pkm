@@ -38,7 +38,7 @@ func main() {
 	aiClient := ai.NewClient(cfg.ApiKey, cfg.ApiUrl, cfg.DefaultModel, cfg.JinaToken)
 
 	
-	noteService := service.NewNoteService(mysqlDB)
+	noteService := service.NewNoteService(mysqlDB, aiClient)
 	aiService := service.NewAIService(aiClient, embeddingsCache, noteService)
 	searchService := service.NewSearchService(noteService, aiService)
 	resolver := resolvers.NewResolver(noteService, searchService)

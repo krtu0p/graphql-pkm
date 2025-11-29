@@ -2,6 +2,7 @@ package resolvers
 
 import (
     "context"
+    "fmt"
     "graphql-pkm/internal/models"
 )
 
@@ -28,7 +29,27 @@ func (r *queryResolver) NotesByTag(ctx context.Context, tag string) ([]*models.N
 }
 
 func (r *queryResolver) Backlinks(ctx context.Context, noteID string) ([]*models.Backlink, error) {
-    return []*models.Backlink{}, nil
+	links, err := r.noteService.GetBackLinks(noteID)
+	if err != nil {
+		return nil, err
+	}
+
+	backlinks := make([]*models.Backlink, len(links))
+	for i, link := range links {
+		sourceNote, err := r.noteService.GetNote(link.SourceNoteID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get source note: %w", err)
+		}
+
+		backlinks[i] = &models.Backlink{
+			ID:          link.ID,
+			SourceNote:  sourceNote,
+			Description: link.Description,
+			CreatedAt:   link.CreatedAt,
+		}
+	}
+
+	return backlinks, nil
 }
 
 func (r *queryResolver) Links(ctx context.Context, noteID string) ([]*models.Link, error) {

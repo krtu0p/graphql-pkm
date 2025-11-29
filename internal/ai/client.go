@@ -163,3 +163,113 @@ func formatNotesForAI(notes map[string]string) string {
 	return sb.String()
 }
 
+func (c *Client) GenerateSummary(title, content string) (string, error) {
+	if !c.IsEnabled() {
+		return "", nil 
+	}
+
+	prompt := fmt.Sprintf(`Summarize this note in 1-2 sentences:
+
+Title: %s
+Content: %s
+
+Provide only the summary, no extra text.`, title, content)
+
+	request := openRouterChatRequest{
+		Model: c.model,
+		Messages: []openRouterChatMessage{
+			{
+				Role:    "system",
+				Content: "You are a concise summarization assistant. Provide brief, accurate summaries.",
+			},
+			{
+				Role:    "user",
+				Content: prompt,
+			},
+		},
+		Stream:    false,
+		MaxTokens: 150,
+	}
+
+	body, err := c.makeRequest("/chat/completions", request)
+	if err != nil {
+		return "", err
+	}
+
+	var response openRouterChatResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return "", err
+	}
+
+	if len(response.Choices) == 0 {
+		return "", fmt.Errorf("no response from AI")
+	}
+
+	return strings.TrimSpace(response.Choices[0].Message.Content), nil
+}
+
+func (c *Client) ExtractKeyConcepts(title, content string) ([]string, error) {
+	if !c.IsEnabled() {
+		return []string{}, nil 
+	}
+
+	prompt := fmt.Sprintf(`Extract 3-5 key concepts or topics from this note:
+
+Title: %s
+Content: %s
+
+Return only a JSON array of strings, like: ["concept1", "concept2", "concept3"]`, title, content)
+
+	request := openRouterChatRequest{
+		Model: c.model,
+		Messages: []openRouterChatMessage{
+			{
+				Role:    "system",
+				Content: "You are a concept extraction assistant. Return only valid JSON arrays.",
+			},
+			{
+				Role:    "user",
+				Content: prompt,
+			},
+		},
+		Stream:    false,
+		MaxTokens: 100,
+	}
+
+	body, err := c.makeRequest("/chat/completions", request)
+	if err != nil {
+		return []string{}, err
+	}
+
+	var response openRouterChatResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return []string{}, err
+	}
+
+	if len(response.Choices) == 0 {
+		return []string{}, fmt.Errorf("no response from AI")
+	}
+
+	
+	var concepts []string
+	if err := json.Unmarshal([]byte(content), &concepts); err != nil {
+		return extractConceptsFromText(content), nil
+	}
+
+	return concepts, nil
+}
+
+func extractConceptsFromText(text string) []string {
+	text = strings.Trim(text, "[]")
+	text = strings.ReplaceAll(text, "\"", "")
+	parts := strings.Split(text, ",")
+	
+	var concepts []string
+	for _, part := range parts {
+		concept := strings.TrimSpace(part)
+		if concept != "" {
+			concepts = append(concepts, concept)
+		}
+	}
+	return concepts
+}
