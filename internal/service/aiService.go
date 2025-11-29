@@ -50,7 +50,10 @@ func (s *AIService) SemanticSearch(query string) ([]*models.SearchResult, error)
     for _, note := range allNotes {
         embedding, exists := s.embeddingsCache.Get(note.ID)
 
+<<<<<<< HEAD
         // 1) kalau belum ada di cache → generate
+=======
+>>>>>>> 3bca154 (+semantic search fix and refine with jina)
         if !exists {
             text := note.Title + " " + note.Content
             embedding, err = s.aiClient.GetEmbedding(text)
@@ -60,12 +63,18 @@ func (s *AIService) SemanticSearch(query string) ([]*models.SearchResult, error)
             s.embeddingsCache.Store(note.ID, embedding)
         }
 
+<<<<<<< HEAD
         // 2) safety: pastikan dimension sama
+=======
+>>>>>>> 3bca154 (+semantic search fix and refine with jina)
         if len(embedding) != len(queryEmbedding) {
             continue
         }
 
+<<<<<<< HEAD
         // 3) calculate
+=======
+>>>>>>> 3bca154 (+semantic search fix and refine with jina)
         similarity := cosineSimilarity(queryEmbedding, embedding)
         if similarity > 0.6 {
             results = append(results, &models.SearchResult{

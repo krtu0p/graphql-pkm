@@ -52,7 +52,7 @@ func (c *Client) SmartSearch(query string, contextNotes map[string]string) (*Sma
 			},
 		},
 		Stream:    false,
-		MaxTokens: 4096, // 🔥 limit token
+		MaxTokens: 4096, 
 	}
 
 	body, err := c.makeRequest("/chat/completions", request)
@@ -72,7 +72,6 @@ func (c *Client) SmartSearch(query string, contextNotes map[string]string) (*Sma
 	content := response.Choices[0].Message.Content
 	content = cleanAIContent(content)
 
-	// Extract JSON only (super safe)
 	jsonBlock := extractJSON(content)
 	if jsonBlock == "" {
 		return nil, fmt.Errorf("AI did not return valid JSON")

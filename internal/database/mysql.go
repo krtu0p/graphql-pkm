@@ -40,7 +40,6 @@ func NewMySQLDB(dataSourceName string) (*MySQLDB, error) {
 func createTables(db *sql.DB) error {
 	log.Println("Creating/verifying database tables...")
 	
-	// Create notes table
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS notes(
 			id VARCHAR(36) PRIMARY KEY,
@@ -60,7 +59,6 @@ func createTables(db *sql.DB) error {
 	}
 	log.Println("  ✓ notes table ready")
 	
-	// Create links table
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS links (
 			id VARCHAR(36) PRIMARY KEY,
@@ -79,7 +77,6 @@ func createTables(db *sql.DB) error {
 	}
 	log.Println("  ✓ links table ready")
 	
-	// Create embeddings_cache table
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS embeddings_cache (
 			note_id VARCHAR(36) PRIMARY KEY,
