@@ -203,3 +203,22 @@ func cosineSimilarity(a, b []float32) float64 {
     }
     return dot / (math.Sqrt(normA) * math.Sqrt(normB))
 }
+
+func (s *AIService) AskAI(prompt string) (string, error) {
+    return s.aiClient.Ask(prompt)
+}
+
+func (s *AIService) CheckRelationship(noteA, noteB *models.Note) (string, error) {
+    prompt := fmt.Sprintf(`Analisis apakah ada hubungan konseptual antara dua catatan berikut:
+
+    Catatan 1: %s
+    %s
+
+    Catatan 2: %s
+    %s
+
+    Jika ada hubungan, jelaskan secara singkat. Jika tidak, katakan tidak ada.`, 
+    noteA.Title, noteA.Content, noteB.Title, noteB.Content)
+
+    return s.AskAI(prompt)
+}

@@ -86,15 +86,16 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Backlinks      func(childComplexity int, noteID string) int
-		HybridSearch   func(childComplexity int, query string) int
-		Links          func(childComplexity int, noteID string) int
-		Note           func(childComplexity int, id string) int
-		Notes          func(childComplexity int) int
-		NotesByTag     func(childComplexity int, tag string) int
-		SearchNotes    func(childComplexity int, query string) int
-		SemanticSearch func(childComplexity int, query string) int
-		SmartSearch    func(childComplexity int, query string) int
+		Backlinks         func(childComplexity int, noteID string) int
+		CheckRelationship func(childComplexity int, noteIDA string, noteIDB string) int
+		HybridSearch      func(childComplexity int, query string) int
+		Links             func(childComplexity int, noteID string) int
+		Note              func(childComplexity int, id string) int
+		Notes             func(childComplexity int) int
+		NotesByTag        func(childComplexity int, tag string) int
+		SearchNotes       func(childComplexity int, query string) int
+		SemanticSearch    func(childComplexity int, query string) int
+		SmartSearch       func(childComplexity int, query string) int
 	}
 
 	SearchResult struct {
@@ -138,6 +139,7 @@ type QueryResolver interface {
 	SemanticSearch(ctx context.Context, query string) ([]*models.SearchResult, error)
 	SmartSearch(ctx context.Context, query string) (*models.SmartSearchResponse, error)
 	HybridSearch(ctx context.Context, query string) ([]*models.SearchResult, error)
+	CheckRelationship(ctx context.Context, noteIDA string, noteIDB string) (string, error)
 }
 type SubscriptionResolver interface {
 	NoteCreated(ctx context.Context) (<-chan *models.Note, error)
@@ -347,6 +349,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Backlinks(childComplexity, args["noteId"].(string)), true
+	case "Query.checkRelationship":
+		if e.complexity.Query.CheckRelationship == nil {
+			break
+		}
+
+		args, err := ec.field_Query_checkRelationship_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CheckRelationship(childComplexity, args["noteIDA"].(string), args["noteIDB"].(string)), true
 	case "Query.hybridSearch":
 		if e.complexity.Query.HybridSearch == nil {
 			break
@@ -684,6 +697,7 @@ type Query {
   semanticSearch(query: String!): [SearchResult!]!
   smartSearch(query: String!): SmartSearchResponse!
   hybridSearch(query: String!): [SearchResult!]!
+  checkRelationship(noteIDA: ID!, noteIDB: ID!): String!
 }
 
 type Mutation {
@@ -794,6 +808,22 @@ func (ec *executionContext) field_Query_backlinks_args(ctx context.Context, rawA
 		return nil, err
 	}
 	args["noteId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_checkRelationship_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "noteIDA", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["noteIDA"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "noteIDB", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["noteIDB"] = arg1
 	return args, nil
 }
 
@@ -2275,6 +2305,47 @@ func (ec *executionContext) fieldContext_Query_hybridSearch(ctx context.Context,
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_hybridSearch_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_checkRelationship(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_checkRelationship,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().CheckRelationship(ctx, fc.Args["noteIDA"].(string), fc.Args["noteIDB"].(string))
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_checkRelationship(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_checkRelationship_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -4820,6 +4891,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_hybridSearch(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "checkRelationship":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_checkRelationship(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

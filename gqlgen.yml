@@ -14,6 +14,7 @@ resolver:
   layout: follow-schema
   dir: internal/gql/resolvers
   package: resolvers
+  filename: schema.resolvers.go
   type: Resolver
 
 # Autobind existing models from your codebase

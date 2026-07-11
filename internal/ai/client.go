@@ -273,3 +273,36 @@ func extractConceptsFromText(text string) []string {
 	}
 	return concepts
 }
+
+func (c *Client) Ask(prompt string) (string, error) {
+    if !c.IsEnabled() {
+        return "", fmt.Errorf("AI client not enabled")
+    }
+
+    request := openRouterChatRequest{
+        Model: c.model,
+        Messages: []openRouterChatMessage{
+            {
+                Role:    "user",
+                Content: prompt,
+            },
+        },
+        Stream: false,
+    }
+
+    body, err := c.makeRequest("/chat/completions", request)
+    if err != nil {
+        return "", err
+    }
+
+    var response openRouterChatResponse
+    if err := json.Unmarshal(body, &response); err != nil {
+        return "", err
+    }
+
+    if len(response.Choices) == 0 {
+        return "", fmt.Errorf("no response from AI")
+    }
+
+    return strings.TrimSpace(response.Choices[0].Message.Content), nil
+}

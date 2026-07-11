@@ -417,7 +417,86 @@ query {
   }
 }
 ```
+## Relationship Analysis (AI)
 
+Analyze the conceptual relationship between any two notes using AI. Instead of simply comparing keywords, this feature examines the meaning and context of both notes to explain how they are connected.
+
+The analysis can identify relationships such as complementary topics, prerequisite concepts, cause-and-effect, examples, contradictions, or other meaningful conceptual links. This is useful for discovering hidden connections within your knowledge base and deciding whether two notes should be linked.
+
+### Query
+
+```graphql
+query {
+  checkRelationship(
+    noteIDA: "your_note_id_a"
+    noteIDB: "your_note_id_b"
+  )
+}
+```
+
+### Arguments
+
+| Argument | Type | Description |
+|----------|------|-------------|
+| `noteIDA` | `ID!` | The ID of the first note. |
+| `noteIDB` | `ID!` | The ID of the second note. |
+
+### Returns
+
+Returns a single AI-generated string describing the conceptual relationship between the two notes.
+
+**Return Type**
+
+```graphql
+String!
+```
+
+### Example
+
+```graphql
+query {
+  checkRelationship(
+    noteIDA: "683b9e869e5b8965550ac605e8e035bf"
+    noteIDB: "07be3a74f128355209eff2c4b0aa03f5"
+  )
+}
+```
+
+### Example Response
+
+```json
+{
+  "data": {
+    "checkRelationship": "Both notes discuss API design from different perspectives. One introduces GraphQL's schema-based approach, while the other explains REST's resource-oriented architecture. Together, they provide a comprehensive comparison of modern API design patterns."
+  }
+}
+```
+
+### Common Relationship Types
+
+Depending on the content of the notes, the AI may identify relationships such as:
+
+- Complementary topics
+- Prerequisite knowledge
+- Parent and child concepts
+- Cause and effect
+- Problem and solution
+- Comparison or contrast
+- Example and explanation
+- Similar ideas
+- Contradictory viewpoints
+- No significant relationship
+
+### Use Cases
+
+- Discover hidden connections between notes.
+- Understand how two concepts relate.
+- Compare technologies or methodologies.
+- Verify whether notes should be linked.
+- Explore dependencies between learning topics.
+- Improve navigation within your personal knowledge graph.
+
+> **Note:** The explanation is generated dynamically by AI based on the contents of both notes. The wording and identified relationship may vary depending on the information available in each note.
 ## Project Structure
 
 ```

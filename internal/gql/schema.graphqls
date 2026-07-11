@@ -64,6 +64,7 @@ type Query {
   semanticSearch(query: String!): [SearchResult!]!
   smartSearch(query: String!): SmartSearchResponse!
   hybridSearch(query: String!): [SearchResult!]!
+  checkRelationship(noteIDA: ID!, noteIDB: ID!): String!
 }
 
 type Mutation {

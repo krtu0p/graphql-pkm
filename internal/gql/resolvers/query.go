@@ -55,3 +55,7 @@ func (r *queryResolver) Backlinks(ctx context.Context, noteID string) ([]*models
 func (r *queryResolver) Links(ctx context.Context, noteID string) ([]*models.Link, error) {
     return r.noteService.GetLinks(noteID)
 }
+
+func (r *queryResolver) CheckRelationship(ctx context.Context, noteIDA string, noteIDB string) (string, error) {
+    return r.searchService.CheckRelationship(noteIDA, noteIDB)
+}

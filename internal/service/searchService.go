@@ -29,3 +29,12 @@ func (s *SearchService) SmartSearch(query string) (*models.SmartSearchResponse, 
 func (s *SearchService) HybridSearch(query string) ([]*models.SearchResult, error) {
 	return s.aiService.HybridSearch(query)
 }
+
+func (s *SearchService) CheckRelationship(noteID_A, noteID_B string) (string, error) {
+    noteA, err := s.noteService.GetNote(noteID_A)
+    if err != nil { return "", err }
+    noteB, err := s.noteService.GetNote(noteID_B)
+    if err != nil { return "", err }
+
+    return s.aiService.CheckRelationship(noteA, noteB)
+}

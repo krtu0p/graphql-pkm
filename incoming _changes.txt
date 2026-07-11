@@ -1,3 +1,4 @@
 1. make it local
 2. migrate local ai
 3. mysql to sqlite
+now i want to change it like obsidian local-first, how to migrate from mysql to sqlite, create a file, change to local ai, and i want to make it local app so what programming languange should i use for performance and i plant to multiplatform and how the golang work with serverless
