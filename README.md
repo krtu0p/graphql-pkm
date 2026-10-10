@@ -34,7 +34,7 @@ A GraphQL-based Personal Knowledge Management system with AI-powered search and 
 
 1. **Clone repository**:
 ```bash
-git clone <repository>
+git clone https://github.com/krtu0p/graphql-pkm
 cd graphql-pkm
 ```
 
