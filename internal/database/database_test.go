@@ -380,4 +380,18 @@ func TestSQLiteCascadeAndEmbeddings(t *testing.T) {
 	if err := cache.Clear(); err != nil {
 		t.Fatalf("cache.Clear(): %v", err)
 	}
+
+	// Model mismatch test: old model vector must be treated as a cache miss when model changes
+	jinaCache := NewSQLiteEmbeddingsCache(db, "jina-embeddings-v3")
+	if err := jinaCache.Store("n2", []float32{0.1, 0.2, 0.3, 0.4}); err != nil {
+		t.Fatalf("jinaCache.Store: %v", err)
+	}
+	if _, ok := jinaCache.Get("n2"); !ok {
+		t.Fatalf("expected cache hit for same model")
+	}
+
+	ollamaCache := NewSQLiteEmbeddingsCache(db, "nomic-embed-text")
+	if _, ok := ollamaCache.Get("n2"); ok {
+		t.Fatalf("expected cache miss when configured EMBED_MODEL differs from cached model")
+	}
 }

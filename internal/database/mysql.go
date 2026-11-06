@@ -80,6 +80,8 @@ func createTables(db *sql.DB) error {
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS embeddings_cache (
 			note_id VARCHAR(36) PRIMARY KEY,
+			model VARCHAR(255) NOT NULL DEFAULT '',
+			dimensions INT NOT NULL DEFAULT 0,
 			embedding_json JSON NOT NULL,
 			created_at DATETIME(6) NOT NULL,
 			updated_at DATETIME(6) NOT NULL,
@@ -89,6 +91,8 @@ func createTables(db *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("failed to create embeddings_cache table: %w", err)
 	}
+	_, _ = db.Exec(`ALTER TABLE embeddings_cache ADD COLUMN model VARCHAR(255) NOT NULL DEFAULT ''`)
+	_, _ = db.Exec(`ALTER TABLE embeddings_cache ADD COLUMN dimensions INT NOT NULL DEFAULT 0`)
 	log.Println("  ✓ embeddings_cache table ready")
 	
 	return nil

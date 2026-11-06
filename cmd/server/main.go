@@ -40,7 +40,7 @@ func main() {
 			log.Fatalf("Failed to open SQLite database: %v", err)
 		}
 		db = sqliteDB
-		embeddingsCache = database.NewSQLiteEmbeddingsCache(sqliteDB)
+		embeddingsCache = database.NewSQLiteEmbeddingsCache(sqliteDB, cfg.EmbedModel)
 		closeDB = sqliteDB.Close
 		dbDesc = fmt.Sprintf("SQLite (%s)", cfg.DBPath)
 	case "mysql":
@@ -49,7 +49,7 @@ func main() {
 			log.Fatalf("Failed to connect to MySQL: %v", err)
 		}
 		db = mysqlDB
-		embeddingsCache = database.NewMySQLEmbeddingsCache(mysqlDB)
+		embeddingsCache = database.NewMySQLEmbeddingsCache(mysqlDB, cfg.EmbedModel)
 		closeDB = mysqlDB.Close
 		dbDesc = "MySQL (persistent storage)"
 		log.Println("✓ MySQL database connected successfully")
@@ -58,10 +58,19 @@ func main() {
 	}
 	defer closeDB()
 
-	aiClient := ai.NewClient(cfg.ApiKey, cfg.ApiUrl, cfg.DefaultModel, cfg.JinaToken)
+	aiClient := ai.NewClientWithConfig(ai.ClientConfig{
+		Enabled:      cfg.AIEnabled,
+		BaseURL:      cfg.AIBaseURL,
+		APIKey:       cfg.AIAPIKey,
+		Model:        cfg.AIModel,
+		EmbedBaseURL: cfg.EmbedBaseURL,
+		EmbedAPIKey:  cfg.EmbedAPIKey,
+		EmbedModel:   cfg.EmbedModel,
+	})
 
 	noteService := service.NewNoteService(db, aiClient)
 	aiService := service.NewAIService(aiClient, embeddingsCache, noteService)
+	aiService.SetSemanticThreshold(cfg.SemanticThreshold)
 	searchService := service.NewSearchService(noteService, aiService)
 	resolver := resolvers.NewResolver(noteService, searchService)
 
@@ -75,9 +84,9 @@ func main() {
 	log.Printf("🎮 Playground at http://%s", addr)
 
 	if aiClient.IsEnabled() {
-		log.Printf("🤖 AI features: ENABLED (using %s)", cfg.DefaultModel)
+		log.Printf("🤖 AI features: ENABLED (chat: %s @ %s, embed: %s)", cfg.AIModel, cfg.AIBaseURL, cfg.EmbedModel)
 	} else {
-		log.Println("⚠️  AI features: DISABLED (no API key)")
+		log.Println("⚠️  AI features: DISABLED")
 	}
 
 	log.Printf("💾 Database: %s", dbDesc)

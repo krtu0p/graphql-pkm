@@ -6,42 +6,104 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 	"regexp"
 	"strings"
+	"time"
 )
 
+type ClientConfig struct {
+	Enabled      bool
+	BaseURL      string
+	APIKey       string
+	Model        string
+	EmbedBaseURL string
+	EmbedAPIKey  string
+	EmbedModel   string
+	Timeout      time.Duration
+}
+
 type Client struct {
-	apiKey     string
-	baseURL    string
-	httpClient *http.Client
-	model      string
-	jinaToken string
+	enabled      bool
+	apiKey       string
+	baseURL      string
+	httpClient   *http.Client
+	model        string
+	embedBaseURL string
+	embedAPIKey  string
+	embedModel   string
 }
 
 func NewClient(apiKey, baseURL, model, jinaToken string) *Client {
+	embedBase := baseURL
+	embedKey := apiKey
+	if jinaToken != "" {
+		embedKey = jinaToken
+	}
+	return NewClientWithConfig(ClientConfig{
+		Enabled:      baseURL != "",
+		BaseURL:      baseURL,
+		APIKey:       apiKey,
+		Model:        model,
+		EmbedBaseURL: embedBase,
+		EmbedAPIKey:  embedKey,
+		EmbedModel:   "nomic-embed-text",
+	})
+}
+
+func NewClientWithConfig(cfg ClientConfig) *Client {
+	timeout := cfg.Timeout
+	if timeout <= 0 {
+		timeout = 30 * time.Second
+	}
+	baseURL := strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
+	embedBaseURL := strings.TrimRight(strings.TrimSpace(cfg.EmbedBaseURL), "/")
+	if embedBaseURL == "" {
+		embedBaseURL = baseURL
+	}
+	embedAPIKey := cfg.EmbedAPIKey
+	if embedAPIKey == "" {
+		embedAPIKey = cfg.APIKey
+	}
+	model := strings.TrimSpace(cfg.Model)
+	if model == "" {
+		model = "llama3.2"
+	}
+	embedModel := strings.TrimSpace(cfg.EmbedModel)
+	if embedModel == "" {
+		embedModel = "nomic-embed-text"
+	}
 
 	return &Client{
-		apiKey:  apiKey,
-		baseURL: baseURL,
-		model:   model,
+		enabled:      cfg.Enabled && baseURL != "",
+		apiKey:       cfg.APIKey,
+		baseURL:      baseURL,
+		model:        model,
+		embedBaseURL: embedBaseURL,
+		embedAPIKey:  embedAPIKey,
+		embedModel:   embedModel,
 		httpClient: &http.Client{
-			Timeout: 60 * time.Second,
+			Timeout: timeout,
 		},
-		jinaToken: jinaToken,
-
 	}
 }
 
 func (c *Client) IsEnabled() bool {
-	return c.apiKey != ""
+	return c != nil && c.enabled && c.baseURL != ""
 }
 
 func (c *Client) SetModel(model string) {
 	c.model = model
 }
 
+func (c *Client) EmbedModel() string {
+	return c.embedModel
+}
+
 func (c *Client) makeRequest(endpoint string, payload interface{}) ([]byte, error) {
+	return c.makeRequestTo(c.baseURL, c.apiKey, endpoint, payload)
+}
+
+func (c *Client) makeRequestTo(baseURL, apiKey, endpoint string, payload interface{}) ([]byte, error) {
 	if !c.IsEnabled() {
 		return nil, fmt.Errorf("AI client is not enabled")
 	}
@@ -51,13 +113,15 @@ func (c *Client) makeRequest(endpoint string, payload interface{}) ([]byte, erro
 		return nil, fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", c.baseURL+endpoint, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest("POST", baseURL+endpoint, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+	if apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+	}
 	req.Header.Set("HTTP-Referer", "https://github.com/krtu0p/graphql-pkm")
 	req.Header.Set("X-Title", "GraphQL PKM")
 
@@ -75,55 +139,25 @@ func (c *Client) makeRequest(endpoint string, payload interface{}) ([]byte, erro
 	return io.ReadAll(resp.Body)
 }
 
-
 func (c *Client) GetEmbedding(text string) ([]float32, error) {
-    url := "https://api.jina.ai/v1/embeddings"
-    payload := map[string]interface{}{
-        "input": []string{text},
-        "model": "jina-embeddings-v3",      
-        "dimensions": 1024,                 
+	reqPayload := openrouterEmbbedingRequest{
+		Model: c.embedModel,
+		Input: []string{text},
+	}
 
-    }
+	body, err := c.makeRequestTo(c.embedBaseURL, c.embedAPIKey, "/embeddings", reqPayload)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call embeddings API: %w", err)
+	}
 
-    jsonData, err := json.Marshal(payload)
-    if err != nil {
-        return nil, err
-    }
-
-    req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
-    if err != nil {
-        return nil, err
-    }
-    req.Header.Set("Content-Type", "application/json")
-    req.Header.Set("Authorization", "Bearer "+c.jinaToken)  
-
-    resp, err := c.httpClient.Do(req)
-    if err != nil {
-        return nil, fmt.Errorf("failed to call Jina API: %w", err)
-    }
-    defer resp.Body.Close()
-
-    body, err := io.ReadAll(resp.Body)
-    if err != nil {
-        return nil, fmt.Errorf("failed to read Jina response: %w", err)
-    }
-
-    if resp.StatusCode != http.StatusOK {
-        return nil, fmt.Errorf("Jina API error %d: %s", resp.StatusCode, string(body))
-    }
-
-    var respObj struct {
-        Data []struct {
-            Embedding []float32 `json:"embedding"`
-        } `json:"data"`
-    }
-    if err := json.Unmarshal(body, &respObj); err != nil {
-        return nil, fmt.Errorf("failed to unmarshal Jina embedding: %w", err)
-    }
-    if len(respObj.Data) == 0 {
-        return nil, fmt.Errorf("no embedding returned from Jina")
-    }
-    return respObj.Data[0].Embedding, nil
+	var respObj openrouterEmbbedingResponse
+	if err := json.Unmarshal(body, &respObj); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal embedding: %w", err)
+	}
+	if len(respObj.Data) == 0 {
+		return nil, fmt.Errorf("no embedding returned")
+	}
+	return respObj.Data[0].Embedding, nil
 }
 
 func (c *Client) GenerateEmbedding(text string) ([]float64, error) {
@@ -131,7 +165,7 @@ func (c *Client) GenerateEmbedding(text string) ([]float64, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	embed64 := make([]float64, len(embed32))
 	for i, v := range embed32 {
 		embed64[i] = float64(v)
@@ -165,7 +199,7 @@ func formatNotesForAI(notes map[string]string) string {
 
 func (c *Client) GenerateSummary(title, content string) (string, error) {
 	if !c.IsEnabled() {
-		return "", nil 
+		return "", nil
 	}
 
 	prompt := fmt.Sprintf(`Summarize this note in 1-2 sentences:
@@ -175,6 +209,7 @@ Content: %s
 
 Provide only the summary, no extra text.`, title, content)
 
+	lowTemp := 0.2
 	request := openRouterChatRequest{
 		Model: c.model,
 		Messages: []openRouterChatMessage{
@@ -187,8 +222,9 @@ Provide only the summary, no extra text.`, title, content)
 				Content: prompt,
 			},
 		},
-		Stream:    false,
-		MaxTokens: 150,
+		Stream:      false,
+		MaxTokens:   150,
+		Temperature: &lowTemp,
 	}
 
 	body, err := c.makeRequest("/chat/completions", request)
@@ -210,7 +246,7 @@ Provide only the summary, no extra text.`, title, content)
 
 func (c *Client) ExtractKeyConcepts(title, content string) ([]string, error) {
 	if !c.IsEnabled() {
-		return []string{}, nil 
+		return []string{}, nil
 	}
 
 	prompt := fmt.Sprintf(`Extract 3-5 key concepts or topics from this note:
@@ -220,6 +256,7 @@ Content: %s
 
 Return only a JSON array of strings, like: ["concept1", "concept2", "concept3"]`, title, content)
 
+	lowTemp := 0.2
 	request := openRouterChatRequest{
 		Model: c.model,
 		Messages: []openRouterChatMessage{
@@ -232,8 +269,9 @@ Return only a JSON array of strings, like: ["concept1", "concept2", "concept3"]`
 				Content: prompt,
 			},
 		},
-		Stream:    false,
-		MaxTokens: 100,
+		Stream:      false,
+		MaxTokens:   100,
+		Temperature: &lowTemp,
 	}
 
 	body, err := c.makeRequest("/chat/completions", request)
@@ -250,20 +288,26 @@ Return only a JSON array of strings, like: ["concept1", "concept2", "concept3"]`
 		return []string{}, fmt.Errorf("no response from AI")
 	}
 
-	
+	raw := cleanAIContent(response.Choices[0].Message.Content)
+
 	var concepts []string
-	if err := json.Unmarshal([]byte(content), &concepts); err != nil {
-		return extractConceptsFromText(content), nil
+	if err := json.Unmarshal([]byte(raw), &concepts); err != nil {
+		return extractConceptsFromText(raw), nil
 	}
 
 	return concepts, nil
 }
 
 func extractConceptsFromText(text string) []string {
+	if start := strings.Index(text, "["); start != -1 {
+		if end := strings.LastIndex(text, "]"); end > start {
+			text = text[start+1 : end]
+		}
+	}
 	text = strings.Trim(text, "[]")
 	text = strings.ReplaceAll(text, "\"", "")
 	parts := strings.Split(text, ",")
-	
+
 	var concepts []string
 	for _, part := range parts {
 		concept := strings.TrimSpace(part)
@@ -275,34 +319,36 @@ func extractConceptsFromText(text string) []string {
 }
 
 func (c *Client) Ask(prompt string) (string, error) {
-    if !c.IsEnabled() {
-        return "", fmt.Errorf("AI client not enabled")
-    }
+	if !c.IsEnabled() {
+		return "", fmt.Errorf("AI client not enabled")
+	}
 
-    request := openRouterChatRequest{
-        Model: c.model,
-        Messages: []openRouterChatMessage{
-            {
-                Role:    "user",
-                Content: prompt,
-            },
-        },
-        Stream: false,
-    }
+	lowTemp := 0.2
+	request := openRouterChatRequest{
+		Model: c.model,
+		Messages: []openRouterChatMessage{
+			{
+				Role:    "user",
+				Content: prompt,
+			},
+		},
+		Stream:      false,
+		Temperature: &lowTemp,
+	}
 
-    body, err := c.makeRequest("/chat/completions", request)
-    if err != nil {
-        return "", err
-    }
+	body, err := c.makeRequest("/chat/completions", request)
+	if err != nil {
+		return "", err
+	}
 
-    var response openRouterChatResponse
-    if err := json.Unmarshal(body, &response); err != nil {
-        return "", err
-    }
+	var response openRouterChatResponse
+	if err := json.Unmarshal(body, &response); err != nil {
+		return "", err
+	}
 
-    if len(response.Choices) == 0 {
-        return "", fmt.Errorf("no response from AI")
-    }
+	if len(response.Choices) == 0 {
+		return "", fmt.Errorf("no response from AI")
+	}
 
-    return strings.TrimSpace(response.Choices[0].Message.Content), nil
+	return strings.TrimSpace(response.Choices[0].Message.Content), nil
 }

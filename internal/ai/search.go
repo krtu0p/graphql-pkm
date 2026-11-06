@@ -39,6 +39,7 @@ func (c *Client) SmartSearch(query string, contextNotes map[string]string) (*Sma
     }
     `, query, contextStr)
 
+	lowTemp := 0.2
 	request := openRouterChatRequest{
 		Model: c.model,
 		Messages: []openRouterChatMessage{
@@ -51,8 +52,9 @@ func (c *Client) SmartSearch(query string, contextNotes map[string]string) (*Sma
 				Content: prompt,
 			},
 		},
-		Stream:    false,
-		MaxTokens: 4096, 
+		Stream:      false,
+		MaxTokens:   4096,
+		Temperature: &lowTemp,
 	}
 
 	body, err := c.makeRequest("/chat/completions", request)

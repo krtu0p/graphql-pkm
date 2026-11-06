@@ -88,6 +88,8 @@ func createSQLiteTables(db *sql.DB) error {
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS embeddings_cache (
 			note_id VARCHAR(36) PRIMARY KEY,
+			model VARCHAR(255) NOT NULL DEFAULT '',
+			dimensions INT NOT NULL DEFAULT 0,
 			embedding_json TEXT NOT NULL,
 			created_at DATETIME NOT NULL,
 			updated_at DATETIME NOT NULL,
@@ -97,6 +99,10 @@ func createSQLiteTables(db *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("failed to create embeddings_cache table: %w", err)
 	}
+
+	// Ensure model and dimensions columns exist on pre-existing databases.
+	_, _ = db.Exec(`ALTER TABLE embeddings_cache ADD COLUMN model VARCHAR(255) NOT NULL DEFAULT ''`)
+	_, _ = db.Exec(`ALTER TABLE embeddings_cache ADD COLUMN dimensions INT NOT NULL DEFAULT 0`)
 
 	return nil
 }

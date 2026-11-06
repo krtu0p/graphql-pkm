@@ -9,11 +9,16 @@ import (
 )
 
 type SQLiteEmbeddingsCache struct {
-	db *SQLiteDB
+	db    *SQLiteDB
+	model string
 }
 
-func NewSQLiteEmbeddingsCache(sqliteDB *SQLiteDB) *SQLiteEmbeddingsCache {
-	return &SQLiteEmbeddingsCache{db: sqliteDB}
+func NewSQLiteEmbeddingsCache(sqliteDB *SQLiteDB, model ...string) *SQLiteEmbeddingsCache {
+	m := ""
+	if len(model) > 0 {
+		m = model[0]
+	}
+	return &SQLiteEmbeddingsCache{db: sqliteDB, model: m}
 }
 
 func (ec *SQLiteEmbeddingsCache) Store(noteID string, embedding []float32) error {
@@ -23,30 +28,35 @@ func (ec *SQLiteEmbeddingsCache) Store(noteID string, embedding []float32) error
 	}
 
 	now := time.Now()
+	dims := len(embedding)
 
 	_, err = ec.db.db.Exec(`
-		INSERT INTO embeddings_cache (note_id, embedding_json, created_at, updated_at)
-		VALUES (?, ?, ?, ?)
+		INSERT INTO embeddings_cache (note_id, model, dimensions, embedding_json, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)
 		ON CONFLICT(note_id) DO UPDATE SET
+			model = excluded.model,
+			dimensions = excluded.dimensions,
 			embedding_json = excluded.embedding_json,
 			updated_at = excluded.updated_at
-	`, noteID, string(embeddingJSON), now, now)
+	`, noteID, ec.model, dims, string(embeddingJSON), now, now)
 
 	if err != nil {
 		return fmt.Errorf("failed to store embedding: %w", err)
 	}
 
-	log.Printf("✓ Cached embedding for note: %s (size: %d dimensions)", noteID, len(embedding))
+	log.Printf("✓ Cached embedding for note: %s (model: %s, size: %d dimensions)", noteID, ec.model, dims)
 	return nil
 }
 
 func (ec *SQLiteEmbeddingsCache) Get(noteID string) ([]float32, bool) {
 	var embeddingJSON string
+	var cachedModel string
+	var cachedDims int
 
 	err := ec.db.db.QueryRow(`
-		SELECT embedding_json FROM embeddings_cache
+		SELECT embedding_json, model, dimensions FROM embeddings_cache
 		WHERE note_id = ?
-	`, noteID).Scan(&embeddingJSON)
+	`, noteID).Scan(&embeddingJSON, &cachedModel, &cachedDims)
 
 	if err == sql.ErrNoRows {
 		log.Printf("⚠️  Cache miss for note: %s", noteID)
@@ -58,9 +68,19 @@ func (ec *SQLiteEmbeddingsCache) Get(noteID string) ([]float32, bool) {
 		return nil, false
 	}
 
+	if ec.model != "" && cachedModel != ec.model {
+		log.Printf("⚠️  Cache miss for note %s: cached model %q != configured model %q", noteID, cachedModel, ec.model)
+		return nil, false
+	}
+
 	var embedding []float32
 	if err := json.Unmarshal([]byte(embeddingJSON), &embedding); err != nil {
 		log.Printf("❌ Error unmarshaling embedding for note %s: %v", noteID, err)
+		return nil, false
+	}
+
+	if cachedDims > 0 && len(embedding) != cachedDims {
+		log.Printf("⚠️  Cache miss for note %s: dimension mismatch (%d != %d)", noteID, len(embedding), cachedDims)
 		return nil, false
 	}
 

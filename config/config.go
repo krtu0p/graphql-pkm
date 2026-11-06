@@ -7,12 +7,22 @@ import (
 )
 
 type Config struct {
-	Host         string
-	Port         int
-	Environment  string
-	DBDriver     string
-	DBPath       string
-	DatabaseUrl  string
+	Host              string
+	Port              int
+	Environment       string
+	DBDriver          string
+	DBPath            string
+	DatabaseUrl       string
+	AIEnabled         bool
+	AIBaseURL         string
+	AIAPIKey          string
+	AIModel           string
+	EmbedBaseURL      string
+	EmbedAPIKey       string
+	EmbedModel        string
+	SemanticThreshold float64
+
+	// Legacy fields kept for compatibility
 	ApiKey       string
 	ApiUrl       string
 	DefaultModel string
@@ -27,17 +37,50 @@ func LoadConfig() (*Config, error) {
 		return nil, err
 	}
 
+	aiBaseURL := getEnvAny([]string{"AI_BASE_URL", "apiUrl"}, "http://localhost:11434/v1")
+	aiAPIKey := getEnvAny([]string{"AI_API_KEY", "apiKey"}, "")
+	aiModel := getEnvAny([]string{"AI_MODEL", "defaultModel"}, "llama3.2")
+	embedBaseURL := getEnv("EMBED_BASE_URL", aiBaseURL)
+	embedAPIKey := getEnvAny([]string{"EMBED_API_KEY", "jinaToken"}, aiAPIKey)
+	embedModel := getEnv("EMBED_MODEL", "nomic-embed-text")
+
+	aiEnabled := aiBaseURL != ""
+	if rawEnabled := strings.TrimSpace(os.Getenv("AI_ENABLED")); rawEnabled != "" {
+		parsed, err := strconv.ParseBool(rawEnabled)
+		if err != nil {
+			return nil, err
+		}
+		aiEnabled = parsed && aiBaseURL != ""
+	}
+
+	semanticThreshold := 0.6
+	if rawThresh := strings.TrimSpace(os.Getenv("SEMANTIC_THRESHOLD")); rawThresh != "" {
+		parsed, err := strconv.ParseFloat(rawThresh, 64)
+		if err != nil {
+			return nil, err
+		}
+		semanticThreshold = parsed
+	}
+
 	return &Config{
-		Host:         getEnv("HOST", "127.0.0.1"),
-		Port:         port,
-		Environment:  getEnv("ENVIRONMENT", "development"),
-		DBDriver:     strings.ToLower(getEnv("DB_DRIVER", "sqlite")),
-		DBPath:       getEnv("DB_PATH", "./data/pkm.db"),
-		DatabaseUrl:  getEnvAny([]string{"DATABASE_URL", "dbUrl"}, "root:password@tcp(localhost:3306)/pkm?parseTime=true"),
-		ApiKey:       getEnv("apiKey", ""),
-		ApiUrl:       getEnv("apiUrl", "https://api.groq.com/openai/v1"),
-		DefaultModel: getEnv("defaultModel", "llama-3.1-8b-instant"),
-		JinaToken:    getEnv("jinaToken", ""),
+		Host:              getEnv("HOST", "127.0.0.1"),
+		Port:              port,
+		Environment:       getEnv("ENVIRONMENT", "development"),
+		DBDriver:          strings.ToLower(getEnv("DB_DRIVER", "sqlite")),
+		DBPath:            getEnv("DB_PATH", "./data/pkm.db"),
+		DatabaseUrl:       getEnvAny([]string{"DATABASE_URL", "dbUrl"}, "root:password@tcp(localhost:3306)/pkm?parseTime=true"),
+		AIEnabled:         aiEnabled,
+		AIBaseURL:         aiBaseURL,
+		AIAPIKey:          aiAPIKey,
+		AIModel:           aiModel,
+		EmbedBaseURL:      embedBaseURL,
+		EmbedAPIKey:       embedAPIKey,
+		EmbedModel:        embedModel,
+		SemanticThreshold: semanticThreshold,
+		ApiKey:            aiAPIKey,
+		ApiUrl:            aiBaseURL,
+		DefaultModel:      aiModel,
+		JinaToken:         embedAPIKey,
 	}, nil
 }
 
