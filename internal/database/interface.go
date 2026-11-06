@@ -18,3 +18,4 @@ type Database interface {
 
 var _ Database = (*MemoryDB)(nil)
 var _ Database = (*MySQLDB)(nil)
+var _ Database = (*SQLiteDB)(nil)

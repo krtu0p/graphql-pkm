@@ -286,9 +286,13 @@ func (m *MySQLDB) GetLinksByNote(noteID string) ([]*models.Link, error) {
 	var links []*models.Link
 	for rows.Next() {
 		var link models.Link
-		err := rows.Scan(&link.ID, &link.SourceNoteID, &link.TargetNoteID, &link.Description, &link.CreatedAt)
+		var description sql.NullString
+		err := rows.Scan(&link.ID, &link.SourceNoteID, &link.TargetNoteID, &description, &link.CreatedAt)
 		if err != nil {
 			return nil, err
+		}
+		if description.Valid {
+			link.Description = &description.String
 		}
 		links = append(links, &link)
 	}

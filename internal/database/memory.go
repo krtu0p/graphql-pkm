@@ -80,7 +80,7 @@ func (db *MemoryDB) GetAllNotes() ([]*models.Note, error){
 
 func (db *MemoryDB) GetNotesByTag(tag string) ([]*models.Note, error) {
 	db.mu.RLock()
-	defer db.mu.Unlock()
+	defer db.mu.RUnlock()
 	
 	var results []*models.Note
 	for _, note := range db.notes {

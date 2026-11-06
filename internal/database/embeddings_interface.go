@@ -10,3 +10,4 @@ type EmbeddingsCache interface {
 }
 
 var _ EmbeddingsCache = (*MySQLEmbeddingsCache)(nil)
+var _ EmbeddingsCache = (*SQLiteEmbeddingsCache)(nil)
