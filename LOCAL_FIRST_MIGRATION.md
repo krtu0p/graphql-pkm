@@ -137,7 +137,7 @@ Embed the UI with `go:embed` and ship a single binary; consider Wails or opening
 ## Status
 
 - [x] Phase 1: SQLite backend
-- [ ] Phase 2: Config and wiring
+- [x] Phase 2: Config and wiring
 - [ ] Phase 3: Local AI and optional AI
 - [ ] Phase 4: Data migration tool
 - [ ] Phase 5: Desktop wrapper (on hold)

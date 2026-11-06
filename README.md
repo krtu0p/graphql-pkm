@@ -22,6 +22,18 @@ A GraphQL-based Personal Knowledge Management system with AI-powered search and 
 - **Caching**: MySQL-based embedding cache
 - **Configuration**: godotenv
 
+## Run Locally (Zero Setup)
+
+No `.env` file or external database server is required. By default, the server binds to `127.0.0.1:8080` and stores data in `./data/pkm.db` (SQLite):
+
+```bash
+go run ./cmd/server
+```
+
+Then open http://127.0.0.1:8080 for the GraphQL Playground.
+
+To use MySQL instead of SQLite, set `DB_DRIVER=mysql` and `DATABASE_URL` in `.env` (see `.env.example`).
+
 ## Installation
 
 ### Requirements
@@ -91,12 +103,16 @@ You should see:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `PORT` | Server port | `8080` |
+| `HOST` | Server bind address | `127.0.0.1` |
+| `PORT` | Server port (also accepts `Port`) | `8080` |
 | `ENVIRONMENT` | Environment mode | `development` |
+| `DB_DRIVER` | Storage backend (`sqlite` or `mysql`) | `sqlite` |
+| `DB_PATH` | SQLite database file path | `./data/pkm.db` |
+| `DATABASE_URL` | MySQL connection string (also accepts `dbUrl`) | `root:password@tcp(localhost:3306)/pkm?parseTime=true` |
 | `apiKey` | Groq API key | `""` (AI disabled) |
 | `apiUrl` | Groq API endpoint | `https://api.groq.com/openai/v1` |
 | `defaultModel` | AI model to use | `llama-3.3-70b-versatile` |
-| `dbUrl` | MySQL connection string | `root:password@tcp(localhost:3306)/pkm?parseTime=true` |
+| `jinaToken` | Jina embeddings API token | `""` |
 
 ### Supported AI Models (Groq)
 

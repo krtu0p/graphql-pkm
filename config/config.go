@@ -3,21 +3,24 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 )
 
 type Config struct {
-	Port        int
-	Environment string
-	ApiKey      string
-	ApiUrl      string
+	Host         string
+	Port         int
+	Environment  string
+	DBDriver     string
+	DBPath       string
+	DatabaseUrl  string
+	ApiKey       string
+	ApiUrl       string
 	DefaultModel string
-	DatabaseUrl string
-	JinaToken string
-
+	JinaToken    string
 }
 
 func LoadConfig() (*Config, error) {
-	portStr := getEnv("Port", "8080")
+	portStr := getEnvAny([]string{"PORT", "Port"}, "8080")
 
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
@@ -25,19 +28,31 @@ func LoadConfig() (*Config, error) {
 	}
 
 	return &Config{
-		Port:        port,
-		Environment: getEnv("ENVIRONMENT", "development"),
-		ApiKey:      getEnv("apiKey", ""),
-		ApiUrl:      getEnv("apiUrl", "https://api.groq.com/openai/v1"),
+		Host:         getEnv("HOST", "127.0.0.1"),
+		Port:         port,
+		Environment:  getEnv("ENVIRONMENT", "development"),
+		DBDriver:     strings.ToLower(getEnv("DB_DRIVER", "sqlite")),
+		DBPath:       getEnv("DB_PATH", "./data/pkm.db"),
+		DatabaseUrl:  getEnvAny([]string{"DATABASE_URL", "dbUrl"}, "root:password@tcp(localhost:3306)/pkm?parseTime=true"),
+		ApiKey:       getEnv("apiKey", ""),
+		ApiUrl:       getEnv("apiUrl", "https://api.groq.com/openai/v1"),
 		DefaultModel: getEnv("defaultModel", "llama-3.1-8b-instant"),
-		DatabaseUrl: getEnv("dbUrl", "root:password@tcp(localhost:3306)/pkm?parseTime=true"),
-		JinaToken: getEnv("jinaToken", ""),
+		JinaToken:    getEnv("jinaToken", ""),
 	}, nil
 }
 
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
+	}
+	return defaultValue
+}
+
+func getEnvAny(keys []string, defaultValue string) string {
+	for _, key := range keys {
+		if value := os.Getenv(key); value != "" {
+			return value
+		}
 	}
 	return defaultValue
 }
