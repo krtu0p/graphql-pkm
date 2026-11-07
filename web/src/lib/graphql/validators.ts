@@ -1,7 +1,11 @@
 import type {
+  AiModelList,
+  AiSettings,
   Backlink,
   Link,
+  ListAiModelsInput,
   Note,
+  SaveAiSettingsInput,
   SearchResult,
   SmartSearchResponse,
 } from './types';
@@ -140,4 +144,100 @@ export function parseSmartSearchResponse(raw: unknown): SmartSearchResponse {
     gaps: asStringArray(raw.gaps),
     connections: asStringArray(raw.connections),
   };
+}
+
+export function parseAiSettings(raw: unknown): AiSettings | null {
+  if (!isRecord(raw)) return null;
+  if (
+    typeof raw.enabled !== 'boolean' ||
+    typeof raw.provider !== 'string' ||
+    typeof raw.baseUrl !== 'string' ||
+    typeof raw.model !== 'string' ||
+    typeof raw.hasApiKey !== 'boolean' ||
+    typeof raw.embedBaseUrl !== 'string' ||
+    typeof raw.embedModel !== 'string'
+  ) {
+    return null;
+  }
+
+  return {
+    enabled: raw.enabled,
+    provider: raw.provider,
+    baseUrl: raw.baseUrl,
+    model: raw.model,
+    hasApiKey: raw.hasApiKey,
+    embedBaseUrl: raw.embedBaseUrl,
+    embedModel: raw.embedModel,
+  };
+}
+
+export function parseAiModelList(raw: unknown): AiModelList {
+  if (!isRecord(raw)) {
+    return { models: [], error: 'The server returned an invalid AI model list.' };
+  }
+
+  // OpenAI-compatible chat requests send the model name as-is. Gemini's model
+  // list prefixes IDs with "models/", so normalize to the bare chat name.
+  const models = Array.from(
+    new Set(
+      asStringArray(raw.models)
+        .map((model) => model.trim().replace(/^models\//, ''))
+        .filter((model) => model.length > 0),
+    ),
+  );
+
+  return {
+    models,
+    error: asNullableString(raw.error),
+  };
+}
+
+function trimTrailingSlashes(value: string): string {
+  return value.trim().replace(/\/+$/, '');
+}
+
+export function buildSaveAiSettingsInput(input: SaveAiSettingsInput): SaveAiSettingsInput {
+  const provider = input.provider.trim();
+  const baseUrl = trimTrailingSlashes(input.baseUrl);
+  const model = input.model.trim();
+  const embedBaseUrl = trimTrailingSlashes(input.embedBaseUrl);
+  const embedModel = input.embedModel.trim();
+
+  if (!provider) {
+    throw new Error('Choose an AI provider.');
+  }
+  if (input.enabled && !baseUrl) {
+    throw new Error('Enter a base URL before enabling AI.');
+  }
+  if (input.enabled && !model) {
+    throw new Error('Choose or type a model before enabling AI.');
+  }
+
+  const cleanInput: SaveAiSettingsInput = {
+    enabled: input.enabled,
+    provider,
+    baseUrl,
+    model,
+    embedBaseUrl,
+    embedModel,
+  };
+  if (input.apiKey !== undefined) {
+    cleanInput.apiKey = input.apiKey.trim();
+  }
+  return cleanInput;
+}
+
+export function buildListAiModelsInput(input: ListAiModelsInput): ListAiModelsInput {
+  const cleanInput: ListAiModelsInput = {
+    baseUrl: trimTrailingSlashes(input.baseUrl),
+  };
+
+  const provider = input.provider?.trim();
+  if (provider) {
+    cleanInput.provider = provider;
+  }
+  if (input.apiKey !== undefined) {
+    cleanInput.apiKey = input.apiKey.trim();
+  }
+  return cleanInput;
 }

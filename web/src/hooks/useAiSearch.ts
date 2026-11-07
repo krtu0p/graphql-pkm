@@ -206,3 +206,5 @@ export function useAiSearch() {
     retryAiModes,
   };
 }
+
+export type AiSearchController = ReturnType<typeof useAiSearch>;

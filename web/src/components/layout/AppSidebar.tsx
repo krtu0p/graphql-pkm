@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, type ReactNode } from 'react';
+import type { AiStatus } from '../../hooks/useAiSettings';
 import type { Note } from '../../lib/graphql/types';
 import type { NavigationSection } from '../../types/navigation';
 
@@ -8,6 +9,7 @@ export interface AppSidebarProps {
   isCollapsedTablet?: boolean;
   notes?: Note[];
   selectedTag?: string | null;
+  aiStatus?: AiStatus;
   onSelectSection: (section: NavigationSection) => void;
   onSelectTagFromSidebar?: (tag: string) => void;
   onNewNote: () => void;
@@ -102,12 +104,20 @@ const PRIMARY_NAV_ITEMS: SidebarNavItem[] = [
   },
 ];
 
+const AI_STATUS_LABELS: Record<AiStatus, string> = {
+  loading: 'checking…',
+  on: 'on',
+  off: 'off',
+  unavailable: 'unavailable',
+};
+
 export function AppSidebar({
   activeSection,
   isOpenMobile,
   isCollapsedTablet = false,
   notes = [],
   selectedTag = null,
+  aiStatus = 'unavailable',
   onSelectSection,
   onSelectTagFromSidebar,
   onNewNote,
@@ -330,6 +340,15 @@ export function AppSidebar({
         </nav>
 
         <div className="sidebar-footer">
+          <div
+            className={`sidebar-ai-status is-${aiStatus}`}
+            role="status"
+            aria-live="polite"
+          >
+            <span className="sidebar-ai-status-dot" aria-hidden="true" />
+            <span className="sidebar-ai-status-label">AI:</span>
+            <span className="sidebar-ai-status-value">{AI_STATUS_LABELS[aiStatus]}</span>
+          </div>
           <button
             type="button"
             className={`nav-item ${activeSection === 'settings' ? 'is-active' : ''}`}

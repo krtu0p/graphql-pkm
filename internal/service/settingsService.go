@@ -141,18 +141,35 @@ func (s *AISettingsService) ListAIModels(input models.ListAIModelsInput) (*model
 		if err != nil {
 			return nil, err
 		}
-		apiKey = settings.APIKey
+		// Only reuse the saved key for the endpoint it was saved for. Sending it
+		// to a different host would leak the credential to another provider.
+		if settings.BaseURL != "" && baseURL == strings.TrimRight(settings.BaseURL, "/") {
+			apiKey = settings.APIKey
+		}
 	}
 
 	modelIDs, err := s.client.ListModels(baseURL, apiKey)
 	if err != nil {
-		message := err.Error()
+		message := modelListErrorMessage(err)
 		return &models.AIModelList{Models: []string{}, Error: &message}, nil
 	}
 	if modelIDs == nil {
 		modelIDs = []string{}
 	}
 	return &models.AIModelList{Models: modelIDs}, nil
+}
+
+func modelListErrorMessage(err error) string {
+	message := err.Error()
+	switch {
+	case strings.Contains(message, "API Returned: 401"),
+		strings.Contains(message, "API Returned: 403"):
+		return "The API key was rejected"
+	case strings.Contains(message, "API Returned: 404"):
+		return "Endpoint not found, check the base URL"
+	default:
+		return message
+	}
 }
 
 func (s *AISettingsService) resolve() (resolvedAISettings, error) {

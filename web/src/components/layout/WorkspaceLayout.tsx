@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react';
+import type { AiStatus } from '../../hooks/useAiSettings';
 import type { Backlink, Note } from '../../lib/graphql/types';
 import type { NavigationSection } from '../../types/navigation';
 import { AppHeader } from './AppHeader';
@@ -12,6 +13,7 @@ export interface WorkspaceLayoutProps {
   backlinks?: Backlink[];
   selectedTag?: string | null;
   isEnriching?: boolean;
+  aiStatus?: AiStatus;
   onSelectSection: (section: NavigationSection) => void;
   onSelectTagFromSidebar?: (tag: string) => void;
   onNewNote: () => void;
@@ -28,6 +30,7 @@ export function WorkspaceLayout({
   backlinks = [],
   selectedTag = null,
   isEnriching = false,
+  aiStatus = 'unavailable',
   onSelectSection,
   onSelectTagFromSidebar,
   onNewNote,
@@ -63,6 +66,7 @@ export function WorkspaceLayout({
         isCollapsedTablet={isTabletSidebarCollapsed}
         notes={allNotes}
         selectedTag={selectedTag}
+        aiStatus={aiStatus}
         onSelectSection={onSelectSection}
         onSelectTagFromSidebar={onSelectTagFromSidebar}
         onNewNote={onNewNote}

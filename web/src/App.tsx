@@ -1,18 +1,24 @@
 import { useState } from 'react';
 import { Dialog } from './components/common/Dialog';
 import { WorkspaceLayout } from './components/layout/WorkspaceLayout';
+import { useAiSearch } from './hooks/useAiSearch';
+import { useAiSettings, type AiStatus } from './hooks/useAiSettings';
 import { useNotesWorkspace } from './hooks/useNotesWorkspace';
 import { EditorPage } from './pages/EditorPage';
 import { GraphPage } from './pages/GraphPage';
 import { NotesPage } from './pages/NotesPage';
 import { SearchPage } from './pages/SearchPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { TagsPage } from './pages/TagsPage';
-import { NAVIGATION_METADATA, type NavigationSection } from './types/navigation';
+import type { NavigationSection } from './types/navigation';
 
 export function App() {
   const [activeSection, setActiveSection] = useState<NavigationSection>('notes');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [librarySearchQuery, setLibrarySearchQuery] = useState('');
+
+  const aiSearch = useAiSearch();
+  const aiSettings = useAiSettings();
 
   const {
     notes,
@@ -62,7 +68,15 @@ export function App() {
     }
   };
 
-  const sectionMeta = NAVIGATION_METADATA[activeSection];
+  const aiStatus: AiStatus = aiSettings.settings
+    ? aiSearch.isAiUnavailable
+      ? 'unavailable'
+      : aiSettings.settings.enabled
+        ? 'on'
+        : 'off'
+    : aiSettings.isLoading
+      ? 'loading'
+      : 'unavailable';
 
   return (
     <WorkspaceLayout
@@ -72,6 +86,7 @@ export function App() {
       backlinks={backlinks}
       selectedTag={selectedTag}
       isEnriching={isEnriching}
+      aiStatus={aiStatus}
       onSelectSection={setActiveSection}
       onSelectTagFromSidebar={handleOpenTagSection}
       onNewNote={handleNewNote}
@@ -137,6 +152,7 @@ export function App() {
         <SearchPage
           notes={notes}
           activeNoteId={activeNoteId}
+          aiSearch={aiSearch}
           onSelectNote={handleOpenNote}
           onSelectTag={handleOpenTagSection}
           onCreateNote={handleNewNote}
@@ -158,43 +174,14 @@ export function App() {
       )}
 
       {activeSection === 'settings' && (
-        <section aria-labelledby="workspace-page-title">
-          <div className="page-header">
-            <div>
-              <h1 id="workspace-page-title" className="page-title">
-                {sectionMeta.label}
-              </h1>
-              <p className="page-description">{sectionMeta.subtitle}</p>
-            </div>
-            <button type="button" className="btn-primary" onClick={handleNewNote}>
-              New Note
-            </button>
-          </div>
-
-          <div className="editorial-panel">
-            <h2>Local-First Workspace Status</h2>
-            <p>
-              Connected to the local GraphQL endpoint at <code>/query</code>. Notes in library:{' '}
-              <strong>{notes.length}</strong>.
-            </p>
-            <div className="settings-actions-row">
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => void loadNotes()}
-              >
-                Reload Library from Server
-              </button>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => setActiveSection('notes')}
-              >
-                Return to All Notes
-              </button>
-            </div>
-          </div>
-        </section>
+        <SettingsPage
+          notesCount={notes.length}
+          aiSettings={aiSettings}
+          onReloadLibrary={() => void loadNotes()}
+          onReturnToNotes={() => setActiveSection('notes')}
+          onCreateNote={handleNewNote}
+          onSettingsSaved={aiSearch.retryAiModes}
+        />
       )}
 
       <Dialog

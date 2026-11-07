@@ -232,38 +232,53 @@ func TestAISettingsRuntimeReloadSharedByServices(t *testing.T) {
 
 func TestListAIModelsAgainstServer(t *testing.T) {
 	var lastAuth atomic.Value
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			t.Fatalf("expected GET, got %s", r.Method)
-		}
-		lastAuth.Store(r.Header.Get("Authorization"))
-		switch r.URL.Path {
-		case "/v1/models":
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(map[string]interface{}{
-				"data": []map[string]string{
-					{"id": "qwen2.5"},
-					{"id": "llama3.2"},
-				},
-			})
-		case "/broken/v1/models":
-			http.Error(w, "provider unavailable", http.StatusServiceUnavailable)
-		default:
-			http.NotFound(w, r)
-		}
-	}))
+	newModelsServer := func() *httptest.Server {
+		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodGet {
+				t.Fatalf("expected GET, got %s", r.Method)
+			}
+			lastAuth.Store(r.Header.Get("Authorization"))
+			switch r.URL.Path {
+			case "/v1/models":
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{
+					"data": []map[string]string{
+						{"id": "qwen2.5"},
+						{"id": "llama3.2"},
+					},
+				})
+			case "/broken/v1/models":
+				http.Error(w, "provider unavailable", http.StatusServiceUnavailable)
+			case "/unauthorized/v1/models":
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+			case "/forbidden/v1/models":
+				http.Error(w, "forbidden", http.StatusForbidden)
+			case "/missing/v1/models":
+				http.Error(w, "missing", http.StatusNotFound)
+			default:
+				http.NotFound(w, r)
+			}
+		}))
+	}
+
+	srv := newModelsServer()
 	defer srv.Close()
+	otherHost := newModelsServer()
+	defer otherHost.Close()
 
 	defaults := testAISettingsDefaults()
+	defaults.BaseURL = srv.URL + "/v1"
+	defaults.APIKey = "saved-key"
 	svc := NewAISettingsService(database.NewMemoryDB(), ai.NewClientWithConfig(ai.ClientConfig{}), defaults)
 
-	key := "unsaved-key"
+	// A key typed in the form is used even though it has not been saved.
+	typedKey := "typed-key"
 	result, err := svc.ListAIModels(models.ListAIModelsInput{
 		BaseURL: srv.URL + "/v1",
-		APIKey:  &key,
+		APIKey:  &typedKey,
 	})
 	if err != nil {
-		t.Fatalf("ListAIModels: %v", err)
+		t.Fatalf("ListAIModels with typed key: %v", err)
 	}
 	if result.Error != nil {
 		t.Fatalf("unexpected error result: %s", *result.Error)
@@ -272,20 +287,51 @@ func TestListAIModelsAgainstServer(t *testing.T) {
 		t.Fatalf("unexpected models: %v", result.Models)
 	}
 	auth, _ := lastAuth.Load().(string)
-	if auth != "Bearer unsaved-key" {
-		t.Fatalf("expected unsaved key to be used, got %q", auth)
+	if auth != "Bearer typed-key" {
+		t.Fatalf("expected typed key to be used, got %q", auth)
 	}
 
+	// With no key in the form, the saved key is reused for the saved endpoint.
 	result, err = svc.ListAIModels(models.ListAIModelsInput{BaseURL: srv.URL + "/v1"})
 	if err != nil {
-		t.Fatalf("ListAIModels with effective key: %v", err)
+		t.Fatalf("ListAIModels with saved key: %v", err)
 	}
 	if result.Error != nil {
 		t.Fatalf("unexpected error result: %s", *result.Error)
 	}
 	auth, _ = lastAuth.Load().(string)
-	if auth != "Bearer env-key" {
-		t.Fatalf("expected effective key to be used, got %q", auth)
+	if auth != "Bearer saved-key" {
+		t.Fatalf("expected saved key to be used for the same base URL, got %q", auth)
+	}
+
+	// The saved key must not be sent to a different host.
+	result, err = svc.ListAIModels(models.ListAIModelsInput{BaseURL: otherHost.URL + "/v1"})
+	if err != nil {
+		t.Fatalf("ListAIModels on different host: %v", err)
+	}
+	if result.Error != nil {
+		t.Fatalf("unexpected error result: %s", *result.Error)
+	}
+	auth, _ = lastAuth.Load().(string)
+	if auth != "" {
+		t.Fatalf("saved key must not be sent to a different host, got %q", auth)
+	}
+
+	// With no key at all, the request is sent without Authorization.
+	noKeyDefaults := testAISettingsDefaults()
+	noKeyDefaults.BaseURL = srv.URL + "/v1"
+	noKeyDefaults.APIKey = ""
+	noKeySvc := NewAISettingsService(database.NewMemoryDB(), ai.NewClientWithConfig(ai.ClientConfig{}), noKeyDefaults)
+	result, err = noKeySvc.ListAIModels(models.ListAIModelsInput{BaseURL: srv.URL + "/v1"})
+	if err != nil {
+		t.Fatalf("ListAIModels without a key: %v", err)
+	}
+	if result.Error != nil {
+		t.Fatalf("unexpected error result: %s", *result.Error)
+	}
+	auth, _ = lastAuth.Load().(string)
+	if auth != "" {
+		t.Fatalf("expected no Authorization header without a key, got %q", auth)
 	}
 
 	result, err = svc.ListAIModels(models.ListAIModelsInput{BaseURL: srv.URL + "/broken/v1"})
@@ -297,5 +343,22 @@ func TestListAIModelsAgainstServer(t *testing.T) {
 	}
 	if !strings.Contains(*result.Error, "503") {
 		t.Fatalf("expected status in error, got %q", *result.Error)
+	}
+
+	for _, testCase := range []struct {
+		path string
+		want string
+	}{
+		{path: "/unauthorized/v1", want: "The API key was rejected"},
+		{path: "/forbidden/v1", want: "The API key was rejected"},
+		{path: "/missing/v1", want: "Endpoint not found, check the base URL"},
+	} {
+		result, err = svc.ListAIModels(models.ListAIModelsInput{BaseURL: srv.URL + testCase.path})
+		if err != nil {
+			t.Fatalf("ListAIModels %s: %v", testCase.path, err)
+		}
+		if result.Error == nil || *result.Error != testCase.want {
+			t.Fatalf("expected %q for %s, got %v", testCase.want, testCase.path, result.Error)
+		}
 	}
 }

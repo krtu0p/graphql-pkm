@@ -1,14 +1,22 @@
 import { executeGraphQL } from './client';
 import type {
+  AiModelList,
+  AiSettings,
   Backlink,
   CreateNoteInput,
   Link,
+  ListAiModelsInput,
   Note,
+  SaveAiSettingsInput,
   SearchResult,
   SmartSearchResponse,
   UpdateNoteInput,
 } from './types';
 import {
+  buildListAiModelsInput,
+  buildSaveAiSettingsInput,
+  parseAiModelList,
+  parseAiSettings,
   parseBacklinkList,
   parseLink,
   parseLinkList,
@@ -191,6 +199,82 @@ const UNLINK_NOTES_MUTATION = `
     unlinkNotes(linkId: $linkId)
   }
 `;
+
+const AI_SETTINGS_FIELDS = `
+  enabled
+  provider
+  baseUrl
+  model
+  hasApiKey
+  embedBaseUrl
+  embedModel
+`;
+
+const AI_SETTINGS_QUERY = `
+  query GetAiSettings {
+    aiSettings {
+      ${AI_SETTINGS_FIELDS}
+    }
+  }
+`;
+
+const SAVE_AI_SETTINGS_MUTATION = `
+  mutation SaveAiSettings($input: SaveAISettingsInput!) {
+    saveAISettings(input: $input) {
+      ${AI_SETTINGS_FIELDS}
+    }
+  }
+`;
+
+const LIST_AI_MODELS_MUTATION = `
+  mutation ListAiModels($input: ListAIModelsInput!) {
+    listAIModels(input: $input) {
+      models
+      error
+    }
+  }
+`;
+
+export async function fetchAiSettings(signal?: AbortSignal): Promise<AiSettings> {
+  const data = await executeGraphQL<{ aiSettings: unknown }>(
+    AI_SETTINGS_QUERY,
+    undefined,
+    signal,
+  );
+  const parsed = parseAiSettings(data.aiSettings);
+  if (!parsed) {
+    throw new Error('Server returned an invalid AI settings payload.');
+  }
+  return parsed;
+}
+
+export async function saveAiSettings(input: SaveAiSettingsInput): Promise<AiSettings> {
+  const cleanInput = buildSaveAiSettingsInput(input);
+  const data = await executeGraphQL<{ saveAISettings: unknown }>(
+    SAVE_AI_SETTINGS_MUTATION,
+    { input: cleanInput },
+  );
+  const parsed = parseAiSettings(data.saveAISettings);
+  if (!parsed) {
+    throw new Error('Server returned an invalid AI settings payload after saving.');
+  }
+  return parsed;
+}
+
+export async function fetchAiModels(input: ListAiModelsInput): Promise<AiModelList> {
+  try {
+    const data = await executeGraphQL<{ listAIModels: unknown }>(
+      LIST_AI_MODELS_MUTATION,
+      { input: buildListAiModelsInput(input) },
+    );
+    return parseAiModelList(data.listAIModels);
+  } catch (error) {
+    return {
+      models: [],
+      error: error instanceof Error ? error.message : 'Unable to load AI models.',
+    };
+  }
+}
 
 export async function fetchNotes(signal?: AbortSignal): Promise<Note[]> {
   const data = await executeGraphQL<{ notes: unknown }>(NOTES_QUERY, undefined, signal);

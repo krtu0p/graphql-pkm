@@ -44,6 +44,37 @@ export interface SmartSearchResponse {
   connections: string[];
 }
 
+export interface AiSettings {
+  enabled: boolean;
+  provider: string;
+  baseUrl: string;
+  model: string;
+  hasApiKey: boolean;
+  embedBaseUrl: string;
+  embedModel: string;
+}
+
+export interface SaveAiSettingsInput {
+  enabled: boolean;
+  provider: string;
+  baseUrl: string;
+  model: string;
+  apiKey?: string;
+  embedBaseUrl: string;
+  embedModel: string;
+}
+
+export interface ListAiModelsInput {
+  provider?: string;
+  baseUrl: string;
+  apiKey?: string;
+}
+
+export interface AiModelList {
+  models: string[];
+  error: string | null;
+}
+
 export interface CreateNoteInput {
   title: string;
   content: string;

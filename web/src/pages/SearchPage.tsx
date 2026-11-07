@@ -7,12 +7,13 @@ import { SearchBar } from '../components/search/SearchBar';
 import { SearchFilters } from '../components/search/SearchFilters';
 import { SearchResults } from '../components/search/SearchResults';
 import { SmartSearchResults } from '../components/search/SmartSearchResults';
-import { useAiSearch } from '../hooks/useAiSearch';
+import type { AiSearchController } from '../hooks/useAiSearch';
 import type { Note } from '../lib/graphql/types';
 
 export interface SearchPageProps {
   notes: Note[];
   activeNoteId: string | null;
+  aiSearch: AiSearchController;
   onSelectNote: (noteId: string) => void;
   onSelectTag: (tag: string) => void;
   onCreateNote: () => void;
@@ -21,6 +22,7 @@ export interface SearchPageProps {
 export function SearchPage({
   notes,
   activeNoteId,
+  aiSearch,
   onSelectNote,
   onSelectTag,
   onCreateNote,
@@ -41,7 +43,7 @@ export function SearchPage({
     runSearch,
     handleModeChange,
     retryAiModes,
-  } = useAiSearch();
+  } = aiSearch;
 
   return (
     <section className="search-page" aria-labelledby="search-page-heading">
