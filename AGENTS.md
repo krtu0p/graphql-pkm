@@ -296,8 +296,10 @@ The existing GraphQL API is the source of truth.
 Endpoint:
 POST /query
 
+Always call the API with the relative URL `/query` (never a hard-coded host or port). In development, configure the Vite dev server to proxy `/query` to `http://127.0.0.1:8080`. The same relative URL must work later when the UI is served by the Go binary or a desktop wrapper.
+
 Playground:
-GET /
+GET / (this may move to `/playground` later; the UI must not depend on it)
 
 Inspect the actual GraphQL schema before implementing queries and mutations.
 
@@ -342,7 +344,7 @@ The backend is becoming local-first: SQLite storage, local AI (Ollama), AI optio
 - AI may be disabled or unreachable. The UI must still work fully. Disable or hide the semantic, hybrid, and smart search modes when AI is unavailable, and fall back to keyword search with a clear message.
 - Summaries and key concepts may be generated in the background after a note is saved. Treat empty values as "not ready yet", show a subtle "Generating…" state, and refetch, instead of showing an error.
 - Never send note content to third-party services (analytics, telemetry, CDNs, external fonts or icons).
-- The API URL comes from config (env var or dev proxy), defaulting to the local server.
+- The API URL is the relative `/query` (dev proxy in development). Do not hard-code hosts or ports.
 
 ## 9. Component Architecture
 
@@ -488,7 +490,8 @@ Strictly avoid:
 ## 14. Stack and Dependencies
 
 - Inspect the repo first and use the existing frontend stack.
-- If no frontend exists yet, stop and ask me which stack to use before scaffolding. (Suggested default: Vite + React + TypeScript.)
+- No frontend exists yet. Create it in a new top-level `web/` folder using Vite + React + TypeScript (so the built `web/dist` can be embedded in the Go binary later). Do not put frontend files in the Go packages.
+- Use plain `fetch` for GraphQL. Do not add a GraphQL client library unless I approve it.
 - Ask before adding any new dependency. Prefer small, well-maintained packages, and prefer the platform (fetch, CSS) over a library when it is simple enough.
 - Pin versions via the lockfile. Do not add packages for things the project already has.
 - Run the package manager's audit after installing and report any high-severity issues.

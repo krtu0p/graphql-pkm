@@ -114,20 +114,6 @@ Done when: with Ollama running, creating a note returns immediately and gets a s
 seconds later; with Ollama stopped, all non-AI operations still work and search falls back to
 keyword search with no panics.
 
-## Phase 4: Data migration tool (one-off)
-
-- Add `cmd/migrate/main.go`: read all notes and links from MySQL (`DATABASE_URL`) through the
-  existing `Database` interface and write them to SQLite (`DB_PATH`), preserving IDs and
-  timestamps. Skip embeddings (they get recomputed).
-- Print counts (notes, links) read and written, and verify they match.
-- Must be idempotent or refuse to run into a non-empty SQLite file unless `--force` is passed.
-
-Done when: counts match on a test dataset.
-
-## Phase 5 (do NOT start unless I ask): desktop wrapper
-
-Embed the UI with `go:embed` and ship a single binary; consider Wails or opening the browser.
-
 ## Small fixes to include in the relevant phase (low priority)
 
 - `MemoryDB.GetNotesByTag` uses `RLock` but a write `Unlock` defer; fix to `RUnlock`.
@@ -139,5 +125,3 @@ Embed the UI with `go:embed` and ship a single binary; consider Wails or opening
 - [x] Phase 1: SQLite backend
 - [x] Phase 2: Config and wiring
 - [x] Phase 3: Local AI and optional AI
-- [ ] Phase 4: Data migration tool
-- [ ] Phase 5: Desktop wrapper (on hold)
