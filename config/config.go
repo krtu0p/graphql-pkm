@@ -14,6 +14,7 @@ type Config struct {
 	DBPath            string
 	DatabaseUrl       string
 	AIEnabled         bool
+	AIProvider        string
 	AIBaseURL         string
 	AIAPIKey          string
 	AIModel           string
@@ -70,6 +71,7 @@ func LoadConfig() (*Config, error) {
 		DBPath:            getEnv("DB_PATH", "./data/pkm.db"),
 		DatabaseUrl:       getEnvAny([]string{"DATABASE_URL", "dbUrl"}, "root:password@tcp(localhost:3306)/pkm?parseTime=true"),
 		AIEnabled:         aiEnabled,
+		AIProvider:        strings.ToLower(strings.TrimSpace(getEnv("AI_PROVIDER", "ollama"))),
 		AIBaseURL:         aiBaseURL,
 		AIAPIKey:          aiAPIKey,
 		AIModel:           aiModel,

@@ -16,6 +16,16 @@ type Database interface {
 	GetBackLinksByNote(noteID string) ([]*models.Link, error)
 }
 
+// AppSettingsStore persists application settings as key/value pairs.
+type AppSettingsStore interface {
+	GetAppSetting(key string) (value string, found bool, err error)
+	SetAppSettings(values map[string]string) error
+}
+
 var _ Database = (*MemoryDB)(nil)
 var _ Database = (*MySQLDB)(nil)
 var _ Database = (*SQLiteDB)(nil)
+
+var _ AppSettingsStore = (*MemoryDB)(nil)
+var _ AppSettingsStore = (*MySQLDB)(nil)
+var _ AppSettingsStore = (*SQLiteDB)(nil)

@@ -9,15 +9,17 @@ import (
 )
 
 type MemoryDB struct {
-	notes map[string]*models.Note
-	links map[string]*models.Link
-	mu    sync.RWMutex
+	notes    map[string]*models.Note
+	links    map[string]*models.Link
+	settings map[string]string
+	mu       sync.RWMutex
 }
 
 func NewMemoryDB() *MemoryDB {
 	return &MemoryDB{
-		notes: make(map[string]*models.Note),
-		links: make(map[string]*models.Link),
+		notes:    make(map[string]*models.Note),
+		links:    make(map[string]*models.Link),
+		settings: make(map[string]string),
 	}
 }
 
@@ -160,4 +162,22 @@ func (db *MemoryDB) GetBackLinksByNote(noteID string) ([]*models.Link, error) {
 	}
 	
 	return links, nil
+}
+
+func (db *MemoryDB) GetAppSetting(key string) (string, bool, error) {
+	db.mu.RLock()
+	defer db.mu.RUnlock()
+
+	value, found := db.settings[key]
+	return value, found, nil
+}
+
+func (db *MemoryDB) SetAppSettings(values map[string]string) error {
+	db.mu.Lock()
+	defer db.mu.Unlock()
+
+	for key, value := range values {
+		db.settings[key] = value
+	}
+	return nil
 }

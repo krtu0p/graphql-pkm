@@ -1,6 +1,7 @@
 package database
 
 import (
+	"errors"
 	"graphql-pkm/internal/models"
 	"path/filepath"
 	"testing"
@@ -288,6 +289,55 @@ func runDatabaseContractSuite(t *testing.T, newDB func(t *testing.T) Database) {
 			t.Fatalf("expected error deleting non-existent link, got nil")
 		}
 	})
+}
+
+func TestSQLiteAppSettings(t *testing.T) {
+	db, err := NewSQLiteDB(filepath.Join(t.TempDir(), "settings.db"))
+	if err != nil {
+		t.Fatalf("NewSQLiteDB failed: %v", err)
+	}
+	defer db.Close()
+
+	if _, found, err := db.GetAppSetting("missing"); err != nil || found {
+		t.Fatalf("expected missing setting, found=%v err=%v", found, err)
+	}
+
+	if err := db.SetAppSettings(map[string]string{"a": "1", "b": ""}); err != nil {
+		t.Fatalf("SetAppSettings initial: %v", err)
+	}
+	if value, found, err := db.GetAppSetting("a"); err != nil || !found || value != "1" {
+		t.Fatalf("unexpected setting a: found=%v value=%q err=%v", found, value, err)
+	}
+	if value, found, err := db.GetAppSetting("b"); err != nil || !found || value != "" {
+		t.Fatalf("unexpected setting b: found=%v value=%q err=%v", found, value, err)
+	}
+
+	if err := db.SetAppSettings(map[string]string{"b": "2"}); err != nil {
+		t.Fatalf("SetAppSettings update: %v", err)
+	}
+	if value, _, _ := db.GetAppSetting("a"); value != "1" {
+		t.Fatalf("expected unrelated setting to remain, got %q", value)
+	}
+	if value, _, _ := db.GetAppSetting("b"); value != "2" {
+		t.Fatalf("expected setting b to update, got %q", value)
+	}
+
+	if err := db.SetAppSettings(map[string]string{"b": ""}); err != nil {
+		t.Fatalf("SetAppSettings clear: %v", err)
+	}
+	if value, found, _ := db.GetAppSetting("b"); !found || value != "" {
+		t.Fatalf("expected cleared setting to be found and empty, found=%v value=%q", found, value)
+	}
+}
+
+func TestMySQLAppSettingsUnsupported(t *testing.T) {
+	var db MySQLDB
+	if _, _, err := db.GetAppSetting("a"); !errors.Is(err, ErrAppSettingsUnsupported) {
+		t.Fatalf("expected GetAppSetting unsupported error, got %v", err)
+	}
+	if err := db.SetAppSettings(map[string]string{"a": "1"}); !errors.Is(err, ErrAppSettingsUnsupported) {
+		t.Fatalf("expected SetAppSettings unsupported error, got %v", err)
+	}
 }
 
 func TestSQLiteCascadeAndEmbeddings(t *testing.T) {

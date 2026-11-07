@@ -49,6 +49,21 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	AIModelList struct {
+		Error  func(childComplexity int) int
+		Models func(childComplexity int) int
+	}
+
+	AISettings struct {
+		BaseURL      func(childComplexity int) int
+		EmbedBaseURL func(childComplexity int) int
+		EmbedModel   func(childComplexity int) int
+		Enabled      func(childComplexity int) int
+		HasAPIKey    func(childComplexity int) int
+		Model        func(childComplexity int) int
+		Provider     func(childComplexity int) int
+	}
+
 	Backlink struct {
 		CreatedAt   func(childComplexity int) int
 		Description func(childComplexity int) int
@@ -65,11 +80,13 @@ type ComplexityRoot struct {
 	}
 
 	Mutation struct {
-		CreateNote  func(childComplexity int, input models.CreateNoteInput) int
-		DeleteNote  func(childComplexity int, id string) int
-		LinkNotes   func(childComplexity int, sourceID string, targetID string, description *string) int
-		UnlinkNotes func(childComplexity int, linkID string) int
-		UpdateNote  func(childComplexity int, id string, input models.UpdateNoteInput) int
+		CreateNote     func(childComplexity int, input models.CreateNoteInput) int
+		DeleteNote     func(childComplexity int, id string) int
+		LinkNotes      func(childComplexity int, sourceID string, targetID string, description *string) int
+		ListAIModels   func(childComplexity int, input models.ListAIModelsInput) int
+		SaveAISettings func(childComplexity int, input models.SaveAISettingsInput) int
+		UnlinkNotes    func(childComplexity int, linkID string) int
+		UpdateNote     func(childComplexity int, id string, input models.UpdateNoteInput) int
 	}
 
 	Note struct {
@@ -86,6 +103,7 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
+		AiSettings        func(childComplexity int) int
 		Backlinks         func(childComplexity int, noteID string) int
 		CheckRelationship func(childComplexity int, noteIDA string, noteIDB string) int
 		HybridSearch      func(childComplexity int, query string) int
@@ -124,6 +142,8 @@ type MutationResolver interface {
 	DeleteNote(ctx context.Context, id string) (bool, error)
 	LinkNotes(ctx context.Context, sourceID string, targetID string, description *string) (*models.Link, error)
 	UnlinkNotes(ctx context.Context, linkID string) (bool, error)
+	SaveAISettings(ctx context.Context, input models.SaveAISettingsInput) (*models.AISettings, error)
+	ListAIModels(ctx context.Context, input models.ListAIModelsInput) (*models.AIModelList, error)
 }
 type NoteResolver interface {
 	Links(ctx context.Context, obj *models.Note) ([]*models.Link, error)
@@ -140,6 +160,7 @@ type QueryResolver interface {
 	SmartSearch(ctx context.Context, query string) (*models.SmartSearchResponse, error)
 	HybridSearch(ctx context.Context, query string) ([]*models.SearchResult, error)
 	CheckRelationship(ctx context.Context, noteIDA string, noteIDB string) (string, error)
+	AiSettings(ctx context.Context) (*models.AISettings, error)
 }
 type SubscriptionResolver interface {
 	NoteCreated(ctx context.Context) (<-chan *models.Note, error)
@@ -164,6 +185,62 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 	ec := executionContext{nil, e, 0, 0, nil}
 	_ = ec
 	switch typeName + "." + field {
+
+	case "AIModelList.error":
+		if e.complexity.AIModelList.Error == nil {
+			break
+		}
+
+		return e.complexity.AIModelList.Error(childComplexity), true
+	case "AIModelList.models":
+		if e.complexity.AIModelList.Models == nil {
+			break
+		}
+
+		return e.complexity.AIModelList.Models(childComplexity), true
+
+	case "AISettings.baseUrl":
+		if e.complexity.AISettings.BaseURL == nil {
+			break
+		}
+
+		return e.complexity.AISettings.BaseURL(childComplexity), true
+	case "AISettings.embedBaseUrl":
+		if e.complexity.AISettings.EmbedBaseURL == nil {
+			break
+		}
+
+		return e.complexity.AISettings.EmbedBaseURL(childComplexity), true
+	case "AISettings.embedModel":
+		if e.complexity.AISettings.EmbedModel == nil {
+			break
+		}
+
+		return e.complexity.AISettings.EmbedModel(childComplexity), true
+	case "AISettings.enabled":
+		if e.complexity.AISettings.Enabled == nil {
+			break
+		}
+
+		return e.complexity.AISettings.Enabled(childComplexity), true
+	case "AISettings.hasApiKey":
+		if e.complexity.AISettings.HasAPIKey == nil {
+			break
+		}
+
+		return e.complexity.AISettings.HasAPIKey(childComplexity), true
+	case "AISettings.model":
+		if e.complexity.AISettings.Model == nil {
+			break
+		}
+
+		return e.complexity.AISettings.Model(childComplexity), true
+	case "AISettings.provider":
+		if e.complexity.AISettings.Provider == nil {
+			break
+		}
+
+		return e.complexity.AISettings.Provider(childComplexity), true
 
 	case "Backlink.createdAt":
 		if e.complexity.Backlink.CreatedAt == nil {
@@ -254,6 +331,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.LinkNotes(childComplexity, args["sourceId"].(string), args["targetId"].(string), args["description"].(*string)), true
+	case "Mutation.listAIModels":
+		if e.complexity.Mutation.ListAIModels == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_listAIModels_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ListAIModels(childComplexity, args["input"].(models.ListAIModelsInput)), true
+	case "Mutation.saveAISettings":
+		if e.complexity.Mutation.SaveAISettings == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_saveAISettings_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SaveAISettings(childComplexity, args["input"].(models.SaveAISettingsInput)), true
 	case "Mutation.unlinkNotes":
 		if e.complexity.Mutation.UnlinkNotes == nil {
 			break
@@ -338,6 +437,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Note.UpdatedAt(childComplexity), true
 
+	case "Query.aiSettings":
+		if e.complexity.Query.AiSettings == nil {
+			break
+		}
+
+		return e.complexity.Query.AiSettings(childComplexity), true
 	case "Query.backlinks":
 		if e.complexity.Query.Backlinks == nil {
 			break
@@ -516,6 +621,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputCreateNoteInput,
+		ec.unmarshalInputListAIModelsInput,
+		ec.unmarshalInputSaveAISettingsInput,
 		ec.unmarshalInputUpdateNoteInput,
 	)
 	first := true
@@ -675,6 +782,21 @@ type SmartSearchResponse {
   connections: [String!]!
 }
 
+type AISettings {
+  enabled: Boolean!
+  provider: String!
+  baseUrl: String!
+  model: String!
+  hasApiKey: Boolean!
+  embedBaseUrl: String!
+  embedModel: String!
+}
+
+type AIModelList {
+  models: [String!]!
+  error: String
+}
+
 input CreateNoteInput {
   title: String!
   content: String!
@@ -685,6 +807,22 @@ input UpdateNoteInput {
   title: String
   content: String
   tags: [String!]
+}
+
+input SaveAISettingsInput {
+  enabled: Boolean!
+  provider: String!
+  baseUrl: String!
+  model: String!
+  apiKey: String
+  embedBaseUrl: String!
+  embedModel: String!
+}
+
+input ListAIModelsInput {
+  provider: String
+  baseUrl: String!
+  apiKey: String
 }
 
 type Query {
@@ -698,6 +836,7 @@ type Query {
   smartSearch(query: String!): SmartSearchResponse!
   hybridSearch(query: String!): [SearchResult!]!
   checkRelationship(noteIDA: ID!, noteIDB: ID!): String!
+  aiSettings: AISettings!
 }
 
 type Mutation {
@@ -706,6 +845,8 @@ type Mutation {
   deleteNote(id: ID!): Boolean!
   linkNotes(sourceId: ID!, targetId: ID!, description: String): Link!
   unlinkNotes(linkId: ID!): Boolean!
+  saveAISettings(input: SaveAISettingsInput!): AISettings!
+  listAIModels(input: ListAIModelsInput!): AIModelList!
 }
 
 type Subscription {
@@ -759,6 +900,28 @@ func (ec *executionContext) field_Mutation_linkNotes_args(ctx context.Context, r
 		return nil, err
 	}
 	args["description"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_listAIModels_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNListAIModelsInput2graphqlᚑpkmᚋinternalᚋmodelsᚐListAIModelsInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_saveAISettings_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNSaveAISettingsInput2graphqlᚑpkmᚋinternalᚋmodelsᚐSaveAISettingsInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -955,6 +1118,267 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 // endregion ************************** directives.gotpl **************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _AIModelList_models(ctx context.Context, field graphql.CollectedField, obj *models.AIModelList) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AIModelList_models,
+		func(ctx context.Context) (any, error) {
+			return obj.Models, nil
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AIModelList_models(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AIModelList",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AIModelList_error(ctx context.Context, field graphql.CollectedField, obj *models.AIModelList) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AIModelList_error,
+		func(ctx context.Context) (any, error) {
+			return obj.Error, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_AIModelList_error(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AIModelList",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AISettings_enabled(ctx context.Context, field graphql.CollectedField, obj *models.AISettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AISettings_enabled,
+		func(ctx context.Context) (any, error) {
+			return obj.Enabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AISettings_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AISettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AISettings_provider(ctx context.Context, field graphql.CollectedField, obj *models.AISettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AISettings_provider,
+		func(ctx context.Context) (any, error) {
+			return obj.Provider, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AISettings_provider(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AISettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AISettings_baseUrl(ctx context.Context, field graphql.CollectedField, obj *models.AISettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AISettings_baseUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.BaseURL, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AISettings_baseUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AISettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AISettings_model(ctx context.Context, field graphql.CollectedField, obj *models.AISettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AISettings_model,
+		func(ctx context.Context) (any, error) {
+			return obj.Model, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AISettings_model(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AISettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AISettings_hasApiKey(ctx context.Context, field graphql.CollectedField, obj *models.AISettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AISettings_hasApiKey,
+		func(ctx context.Context) (any, error) {
+			return obj.HasAPIKey, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AISettings_hasApiKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AISettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AISettings_embedBaseUrl(ctx context.Context, field graphql.CollectedField, obj *models.AISettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AISettings_embedBaseUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.EmbedBaseURL, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AISettings_embedBaseUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AISettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AISettings_embedModel(ctx context.Context, field graphql.CollectedField, obj *models.AISettings) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AISettings_embedModel,
+		func(ctx context.Context) (any, error) {
+			return obj.EmbedModel, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AISettings_embedModel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AISettings",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
 
 func (ec *executionContext) _Backlink_id(ctx context.Context, field graphql.CollectedField, obj *models.Backlink) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
@@ -1494,6 +1918,110 @@ func (ec *executionContext) fieldContext_Mutation_unlinkNotes(ctx context.Contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_unlinkNotes_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_saveAISettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_saveAISettings,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().SaveAISettings(ctx, fc.Args["input"].(models.SaveAISettingsInput))
+		},
+		nil,
+		ec.marshalNAISettings2ᚖgraphqlᚑpkmᚋinternalᚋmodelsᚐAISettings,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_saveAISettings(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "enabled":
+				return ec.fieldContext_AISettings_enabled(ctx, field)
+			case "provider":
+				return ec.fieldContext_AISettings_provider(ctx, field)
+			case "baseUrl":
+				return ec.fieldContext_AISettings_baseUrl(ctx, field)
+			case "model":
+				return ec.fieldContext_AISettings_model(ctx, field)
+			case "hasApiKey":
+				return ec.fieldContext_AISettings_hasApiKey(ctx, field)
+			case "embedBaseUrl":
+				return ec.fieldContext_AISettings_embedBaseUrl(ctx, field)
+			case "embedModel":
+				return ec.fieldContext_AISettings_embedModel(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AISettings", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_saveAISettings_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_listAIModels(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_listAIModels,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().ListAIModels(ctx, fc.Args["input"].(models.ListAIModelsInput))
+		},
+		nil,
+		ec.marshalNAIModelList2ᚖgraphqlᚑpkmᚋinternalᚋmodelsᚐAIModelList,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_listAIModels(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "models":
+				return ec.fieldContext_AIModelList_models(ctx, field)
+			case "error":
+				return ec.fieldContext_AIModelList_error(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AIModelList", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_listAIModels_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -2348,6 +2876,51 @@ func (ec *executionContext) fieldContext_Query_checkRelationship(ctx context.Con
 	if fc.Args, err = ec.field_Query_checkRelationship_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_aiSettings(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_aiSettings,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Query().AiSettings(ctx)
+		},
+		nil,
+		ec.marshalNAISettings2ᚖgraphqlᚑpkmᚋinternalᚋmodelsᚐAISettings,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_aiSettings(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "enabled":
+				return ec.fieldContext_AISettings_enabled(ctx, field)
+			case "provider":
+				return ec.fieldContext_AISettings_provider(ctx, field)
+			case "baseUrl":
+				return ec.fieldContext_AISettings_baseUrl(ctx, field)
+			case "model":
+				return ec.fieldContext_AISettings_model(ctx, field)
+			case "hasApiKey":
+				return ec.fieldContext_AISettings_hasApiKey(ctx, field)
+			case "embedBaseUrl":
+				return ec.fieldContext_AISettings_embedBaseUrl(ctx, field)
+			case "embedModel":
+				return ec.fieldContext_AISettings_embedModel(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AISettings", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -4313,6 +4886,116 @@ func (ec *executionContext) unmarshalInputCreateNoteInput(ctx context.Context, o
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputListAIModelsInput(ctx context.Context, obj any) (models.ListAIModelsInput, error) {
+	var it models.ListAIModelsInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"provider", "baseUrl", "apiKey"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "provider":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("provider"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Provider = data
+		case "baseUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseUrl"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BaseURL = data
+		case "apiKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKey"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.APIKey = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputSaveAISettingsInput(ctx context.Context, obj any) (models.SaveAISettingsInput, error) {
+	var it models.SaveAISettingsInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"enabled", "provider", "baseUrl", "model", "apiKey", "embedBaseUrl", "embedModel"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "enabled":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Enabled = data
+		case "provider":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("provider"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Provider = data
+		case "baseUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("baseUrl"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BaseURL = data
+		case "model":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("model"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Model = data
+		case "apiKey":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiKey"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.APIKey = data
+		case "embedBaseUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("embedBaseUrl"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EmbedBaseURL = data
+		case "embedModel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("embedModel"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EmbedModel = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateNoteInput(ctx context.Context, obj any) (models.UpdateNoteInput, error) {
 	var it models.UpdateNoteInput
 	asMap := map[string]any{}
@@ -4361,6 +5044,116 @@ func (ec *executionContext) unmarshalInputUpdateNoteInput(ctx context.Context, o
 // endregion ************************** interface.gotpl ***************************
 
 // region    **************************** object.gotpl ****************************
+
+var aIModelListImplementors = []string{"AIModelList"}
+
+func (ec *executionContext) _AIModelList(ctx context.Context, sel ast.SelectionSet, obj *models.AIModelList) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, aIModelListImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AIModelList")
+		case "models":
+			out.Values[i] = ec._AIModelList_models(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "error":
+			out.Values[i] = ec._AIModelList_error(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var aISettingsImplementors = []string{"AISettings"}
+
+func (ec *executionContext) _AISettings(ctx context.Context, sel ast.SelectionSet, obj *models.AISettings) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, aISettingsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AISettings")
+		case "enabled":
+			out.Values[i] = ec._AISettings_enabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "provider":
+			out.Values[i] = ec._AISettings_provider(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "baseUrl":
+			out.Values[i] = ec._AISettings_baseUrl(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "model":
+			out.Values[i] = ec._AISettings_model(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "hasApiKey":
+			out.Values[i] = ec._AISettings_hasApiKey(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "embedBaseUrl":
+			out.Values[i] = ec._AISettings_embedBaseUrl(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "embedModel":
+			out.Values[i] = ec._AISettings_embedModel(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
 
 var backlinkImplementors = []string{"Backlink"}
 
@@ -4519,6 +5312,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "unlinkNotes":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_unlinkNotes(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "saveAISettings":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_saveAISettings(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "listAIModels":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_listAIModels(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -4913,6 +5720,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_checkRelationship(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "aiSettings":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_aiSettings(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -5421,6 +6250,34 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
+func (ec *executionContext) marshalNAIModelList2graphqlᚑpkmᚋinternalᚋmodelsᚐAIModelList(ctx context.Context, sel ast.SelectionSet, v models.AIModelList) graphql.Marshaler {
+	return ec._AIModelList(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAIModelList2ᚖgraphqlᚑpkmᚋinternalᚋmodelsᚐAIModelList(ctx context.Context, sel ast.SelectionSet, v *models.AIModelList) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AIModelList(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNAISettings2graphqlᚑpkmᚋinternalᚋmodelsᚐAISettings(ctx context.Context, sel ast.SelectionSet, v models.AISettings) graphql.Marshaler {
+	return ec._AISettings(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAISettings2ᚖgraphqlᚑpkmᚋinternalᚋmodelsᚐAISettings(ctx context.Context, sel ast.SelectionSet, v *models.AISettings) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AISettings(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNBacklink2ᚕᚖgraphqlᚑpkmᚋinternalᚋmodelsᚐBacklinkᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.Backlink) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -5586,6 +6443,11 @@ func (ec *executionContext) marshalNLink2ᚖgraphqlᚑpkmᚋinternalᚋmodelsᚐ
 	return ec._Link(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNListAIModelsInput2graphqlᚑpkmᚋinternalᚋmodelsᚐListAIModelsInput(ctx context.Context, v any) (models.ListAIModelsInput, error) {
+	res, err := ec.unmarshalInputListAIModelsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNNote2graphqlᚑpkmᚋinternalᚋmodelsᚐNote(ctx context.Context, sel ast.SelectionSet, v models.Note) graphql.Marshaler {
 	return ec._Note(ctx, sel, &v)
 }
@@ -5642,6 +6504,11 @@ func (ec *executionContext) marshalNNote2ᚖgraphqlᚑpkmᚋinternalᚋmodelsᚐ
 		return graphql.Null
 	}
 	return ec._Note(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNSaveAISettingsInput2graphqlᚑpkmᚋinternalᚋmodelsᚐSaveAISettingsInput(ctx context.Context, v any) (models.SaveAISettingsInput, error) {
+	res, err := ec.unmarshalInputSaveAISettingsInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNSearchResult2ᚕᚖgraphqlᚑpkmᚋinternalᚋmodelsᚐSearchResultᚄ(ctx context.Context, sel ast.SelectionSet, v []*models.SearchResult) graphql.Marshaler {

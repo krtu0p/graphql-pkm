@@ -104,6 +104,16 @@ func createSQLiteTables(db *sql.DB) error {
 	_, _ = db.Exec(`ALTER TABLE embeddings_cache ADD COLUMN model VARCHAR(255) NOT NULL DEFAULT ''`)
 	_, _ = db.Exec(`ALTER TABLE embeddings_cache ADD COLUMN dimensions INT NOT NULL DEFAULT 0`)
 
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS app_settings (
+			key TEXT PRIMARY KEY,
+			value TEXT NOT NULL DEFAULT ''
+		);
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to create app_settings table: %w", err)
+	}
+
 	return nil
 }
 
@@ -269,6 +279,38 @@ func (s *SQLiteDB) GetBackLinksByNote(noteID string) ([]*models.Link, error) {
 	defer rows.Close()
 
 	return scanSQLiteLinks(rows)
+}
+
+func (s *SQLiteDB) GetAppSetting(key string) (string, bool, error) {
+	var value string
+	err := s.db.QueryRow(`SELECT value FROM app_settings WHERE key = ?`, key).Scan(&value)
+	if err == sql.ErrNoRows {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return value, true, nil
+}
+
+func (s *SQLiteDB) SetAppSettings(values map[string]string) error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	for key, value := range values {
+		_, err := tx.Exec(`
+			INSERT INTO app_settings (key, value) VALUES (?, ?)
+			ON CONFLICT(key) DO UPDATE SET value = excluded.value
+		`, key, value)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 func scanSQLiteNotes(rows *sql.Rows) ([]*models.Note, error) {

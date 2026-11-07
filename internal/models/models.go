@@ -55,3 +55,34 @@ type SmartSearchResponse struct {
 	Gaps        []string        `json:"gaps"`
 	Connections []string        `json:"connections"`
 }
+
+type AISettings struct {
+	Enabled      bool   `json:"enabled"`
+	Provider     string `json:"provider"`
+	BaseURL      string `json:"baseUrl" gqlgen:"baseUrl"`
+	Model        string `json:"model"`
+	HasAPIKey    bool   `json:"hasApiKey" gqlgen:"hasApiKey"`
+	EmbedBaseURL string `json:"embedBaseUrl" gqlgen:"embedBaseUrl"`
+	EmbedModel   string `json:"embedModel"`
+}
+
+type SaveAISettingsInput struct {
+	Enabled      bool    `json:"enabled"`
+	Provider     string  `json:"provider"`
+	BaseURL      string  `json:"baseUrl" gqlgen:"baseUrl"`
+	Model        string  `json:"model"`
+	APIKey       *string `json:"apiKey,omitempty" gqlgen:"apiKey"`
+	EmbedBaseURL string  `json:"embedBaseUrl" gqlgen:"embedBaseUrl"`
+	EmbedModel   string  `json:"embedModel"`
+}
+
+type ListAIModelsInput struct {
+	Provider *string `json:"provider,omitempty"`
+	BaseURL  string  `json:"baseUrl" gqlgen:"baseUrl"`
+	APIKey   *string `json:"apiKey,omitempty" gqlgen:"apiKey"`
+}
+
+type AIModelList struct {
+	Models []string `json:"models"`
+	Error  *string  `json:"error,omitempty"`
+}

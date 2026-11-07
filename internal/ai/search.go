@@ -41,7 +41,7 @@ func (c *Client) SmartSearch(query string, contextNotes map[string]string) (*Sma
 
 	lowTemp := 0.2
 	request := openRouterChatRequest{
-		Model: c.model,
+		Model: c.modelName(),
 		Messages: []openRouterChatMessage{
 			{
 				Role:    "system",

@@ -72,7 +72,26 @@ func main() {
 	aiService := service.NewAIService(aiClient, embeddingsCache, noteService)
 	aiService.SetSemanticThreshold(cfg.SemanticThreshold)
 	searchService := service.NewSearchService(noteService, aiService)
-	resolver := resolvers.NewResolver(noteService, searchService)
+
+	settingsStore, ok := db.(database.AppSettingsStore)
+	if !ok {
+		log.Fatalf("Database backend does not support app settings")
+	}
+	settingsService := service.NewAISettingsService(settingsStore, aiClient, service.AISettingsDefaults{
+		Enabled:      cfg.AIEnabled,
+		Provider:     cfg.AIProvider,
+		BaseURL:      cfg.AIBaseURL,
+		APIKey:       cfg.AIAPIKey,
+		Model:        cfg.AIModel,
+		EmbedBaseURL: cfg.EmbedBaseURL,
+		EmbedAPIKey:  cfg.EmbedAPIKey,
+		EmbedModel:   cfg.EmbedModel,
+	})
+	if err := settingsService.Reload(); err != nil {
+		log.Printf("⚠️  Could not load saved AI settings: %v (using environment configuration)", err)
+	}
+
+	resolver := resolvers.NewResolver(noteService, searchService, settingsService)
 
 	srv := handler.NewDefaultServer(generated.NewExecutableSchema(generated.Config{Resolvers: resolver}))
 
@@ -84,7 +103,11 @@ func main() {
 	log.Printf("🎮 Playground at http://%s", addr)
 
 	if aiClient.IsEnabled() {
-		log.Printf("🤖 AI features: ENABLED (chat: %s @ %s, embed: %s)", cfg.AIModel, cfg.AIBaseURL, cfg.EmbedModel)
+		if aiSettings, err := settingsService.GetAISettings(); err == nil {
+			log.Printf("🤖 AI features: ENABLED (chat: %s @ %s, embed: %s)", aiSettings.Model, aiSettings.BaseURL, aiSettings.EmbedModel)
+		} else {
+			log.Println("🤖 AI features: ENABLED")
+		}
 	} else {
 		log.Println("⚠️  AI features: DISABLED")
 	}

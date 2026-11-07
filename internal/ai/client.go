@@ -7,7 +7,9 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -22,15 +24,20 @@ type ClientConfig struct {
 	Timeout      time.Duration
 }
 
-type Client struct {
+type clientSettings struct {
 	enabled      bool
 	apiKey       string
 	baseURL      string
-	httpClient   *http.Client
 	model        string
 	embedBaseURL string
 	embedAPIKey  string
 	embedModel   string
+}
+
+type Client struct {
+	mu         sync.RWMutex
+	settings   clientSettings
+	httpClient *http.Client
 }
 
 func NewClient(apiKey, baseURL, model, jinaToken string) *Client {
@@ -55,14 +62,35 @@ func NewClientWithConfig(cfg ClientConfig) *Client {
 	if timeout <= 0 {
 		timeout = 30 * time.Second
 	}
+
+	return &Client{
+		settings:   normalizeClientSettings(cfg),
+		httpClient: &http.Client{Timeout: timeout},
+	}
+}
+
+// UpdateConfig replaces the client configuration at runtime. Shared by all
+// services that hold this client, so new settings apply to in-flight workers.
+func (c *Client) UpdateConfig(cfg ClientConfig) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.settings = normalizeClientSettings(cfg)
+	if cfg.Timeout > 0 {
+		c.httpClient = &http.Client{Timeout: cfg.Timeout}
+	}
+}
+
+func normalizeClientSettings(cfg ClientConfig) clientSettings {
 	baseURL := strings.TrimRight(strings.TrimSpace(cfg.BaseURL), "/")
 	embedBaseURL := strings.TrimRight(strings.TrimSpace(cfg.EmbedBaseURL), "/")
 	if embedBaseURL == "" {
 		embedBaseURL = baseURL
 	}
-	embedAPIKey := cfg.EmbedAPIKey
+	embedAPIKey := strings.TrimSpace(cfg.EmbedAPIKey)
+	apiKey := strings.TrimSpace(cfg.APIKey)
 	if embedAPIKey == "" {
-		embedAPIKey = cfg.APIKey
+		embedAPIKey = apiKey
 	}
 	model := strings.TrimSpace(cfg.Model)
 	if model == "" {
@@ -73,47 +101,74 @@ func NewClientWithConfig(cfg ClientConfig) *Client {
 		embedModel = "nomic-embed-text"
 	}
 
-	return &Client{
+	return clientSettings{
 		enabled:      cfg.Enabled && baseURL != "",
-		apiKey:       cfg.APIKey,
+		apiKey:       apiKey,
 		baseURL:      baseURL,
 		model:        model,
 		embedBaseURL: embedBaseURL,
 		embedAPIKey:  embedAPIKey,
 		embedModel:   embedModel,
-		httpClient: &http.Client{
-			Timeout: timeout,
-		},
 	}
+}
+
+func (c *Client) snapshot() (clientSettings, *http.Client) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.settings, c.httpClient
 }
 
 func (c *Client) IsEnabled() bool {
-	return c != nil && c.enabled && c.baseURL != ""
+	if c == nil {
+		return false
+	}
+	settings, _ := c.snapshot()
+	return settings.enabled && settings.baseURL != ""
 }
 
 func (c *Client) SetModel(model string) {
-	c.model = model
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.settings.model = model
 }
 
 func (c *Client) EmbedModel() string {
-	return c.embedModel
+	settings, _ := c.snapshot()
+	return settings.embedModel
+}
+
+func (c *Client) modelName() string {
+	settings, _ := c.snapshot()
+	return settings.model
 }
 
 func (c *Client) makeRequest(endpoint string, payload interface{}) ([]byte, error) {
-	return c.makeRequestTo(c.baseURL, c.apiKey, endpoint, payload)
+	settings, httpClient := c.snapshot()
+	if !settings.enabled || settings.baseURL == "" {
+		return nil, fmt.Errorf("AI client is not enabled")
+	}
+	return c.doRequest(httpClient, http.MethodPost, settings.baseURL, settings.apiKey, endpoint, payload)
 }
 
 func (c *Client) makeRequestTo(baseURL, apiKey, endpoint string, payload interface{}) ([]byte, error) {
-	if !c.IsEnabled() {
+	settings, httpClient := c.snapshot()
+	if !settings.enabled || settings.baseURL == "" {
 		return nil, fmt.Errorf("AI client is not enabled")
 	}
+	return c.doRequest(httpClient, http.MethodPost, baseURL, apiKey, endpoint, payload)
+}
 
-	jsonData, err := json.Marshal(payload)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal payload: %w", err)
+func (c *Client) doRequest(httpClient *http.Client, method, baseURL, apiKey, endpoint string, payload interface{}) ([]byte, error) {
+	var body io.Reader
+	if payload != nil {
+		jsonData, err := json.Marshal(payload)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal payload: %w", err)
+		}
+		body = bytes.NewBuffer(jsonData)
 	}
 
-	req, err := http.NewRequest("POST", baseURL+endpoint, bytes.NewBuffer(jsonData))
+	req, err := http.NewRequest(method, baseURL+endpoint, body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -125,27 +180,78 @@ func (c *Client) makeRequestTo(baseURL, apiKey, endpoint string, payload interfa
 	req.Header.Set("HTTP-Referer", "https://github.com/krtu0p/graphql-pkm")
 	req.Header.Set("X-Title", "GraphQL PKM")
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to make request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API Returned: %d, %s", resp.StatusCode, string(body))
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		return nil, fmt.Errorf("API Returned: %d, %s", resp.StatusCode, strings.TrimSpace(string(body)))
 	}
 
 	return io.ReadAll(resp.Body)
 }
 
+// ListModels calls {baseURL}/models with the supplied values. The values are
+// not persisted; the provided client is only used for its HTTP transport.
+func (c *Client) ListModels(baseURL, apiKey string) ([]string, error) {
+	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
+	if baseURL == "" {
+		return nil, fmt.Errorf("base URL is required")
+	}
+
+	_, httpClient := c.snapshot()
+	body, err := c.doRequest(httpClient, http.MethodGet, baseURL, strings.TrimSpace(apiKey), "/models", nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var payload struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+		Models []struct {
+			Name string `json:"name"`
+			ID   string `json:"id"`
+		} `json:"models"`
+	}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return nil, fmt.Errorf("failed to parse models response: %w", err)
+	}
+
+	seen := make(map[string]bool)
+	ids := make([]string, 0, len(payload.Data)+len(payload.Models))
+	for _, model := range payload.Data {
+		if model.ID != "" && !seen[model.ID] {
+			seen[model.ID] = true
+			ids = append(ids, model.ID)
+		}
+	}
+	for _, model := range payload.Models {
+		id := model.ID
+		if id == "" {
+			id = model.Name
+		}
+		if id != "" && !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
+		}
+	}
+
+	sort.Strings(ids)
+	return ids, nil
+}
+
 func (c *Client) GetEmbedding(text string) ([]float32, error) {
+	settings, _ := c.snapshot()
 	reqPayload := openrouterEmbbedingRequest{
-		Model: c.embedModel,
+		Model: settings.embedModel,
 		Input: []string{text},
 	}
 
-	body, err := c.makeRequestTo(c.embedBaseURL, c.embedAPIKey, "/embeddings", reqPayload)
+	body, err := c.makeRequestTo(settings.embedBaseURL, settings.embedAPIKey, "/embeddings", reqPayload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to call embeddings API: %w", err)
 	}
@@ -211,7 +317,7 @@ Provide only the summary, no extra text.`, title, content)
 
 	lowTemp := 0.2
 	request := openRouterChatRequest{
-		Model: c.model,
+		Model: c.modelName(),
 		Messages: []openRouterChatMessage{
 			{
 				Role:    "system",
@@ -258,7 +364,7 @@ Return only a JSON array of strings, like: ["concept1", "concept2", "concept3"]`
 
 	lowTemp := 0.2
 	request := openRouterChatRequest{
-		Model: c.model,
+		Model: c.modelName(),
 		Messages: []openRouterChatMessage{
 			{
 				Role:    "system",
@@ -325,7 +431,7 @@ func (c *Client) Ask(prompt string) (string, error) {
 
 	lowTemp := 0.2
 	request := openRouterChatRequest{
-		Model: c.model,
+		Model: c.modelName(),
 		Messages: []openRouterChatMessage{
 			{
 				Role:    "user",

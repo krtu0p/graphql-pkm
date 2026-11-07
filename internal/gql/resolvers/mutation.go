@@ -37,3 +37,11 @@ func (r *mutationResolver) UnlinkNotes(ctx context.Context, linkID string) (bool
     }
     return true, nil
 }
+
+func (r *mutationResolver) SaveAISettings(ctx context.Context, input models.SaveAISettingsInput) (*models.AISettings, error) {
+    return r.settingsService.SaveAISettings(input)
+}
+
+func (r *mutationResolver) ListAIModels(ctx context.Context, input models.ListAIModelsInput) (*models.AIModelList, error) {
+    return r.settingsService.ListAIModels(input)
+}

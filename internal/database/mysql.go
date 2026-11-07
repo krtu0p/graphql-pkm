@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"graphql-pkm/internal/models"
 	"log"
@@ -10,6 +11,9 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 )
+
+// ErrAppSettingsUnsupported is returned when app settings are used with MySQL.
+var ErrAppSettingsUnsupported = errors.New("app settings are not supported with the MySQL backend; use SQLite or configure AI with environment variables")
 
 type MySQLDB struct {
 	db *sql.DB
@@ -353,4 +357,12 @@ func (m *MySQLDB) GetBackLinksByNote(noteID string) ([]*models.Link, error) {
 	}
 	return links, nil
 	
+}
+
+func (m *MySQLDB) GetAppSetting(key string) (string, bool, error) {
+	return "", false, ErrAppSettingsUnsupported
+}
+
+func (m *MySQLDB) SetAppSettings(values map[string]string) error {
+	return ErrAppSettingsUnsupported
 }
