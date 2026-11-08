@@ -6,12 +6,14 @@ import { NoteEditor } from '../components/notes/NoteEditor';
 import { NoteMetadata, type EditorSaveState } from '../components/notes/NoteMetadata';
 import { NoteTitle } from '../components/notes/NoteTitle';
 import { TagInput } from '../components/notes/TagInput';
+import type { AiStatus } from '../hooks/useAiSettings';
 import type { Backlink, Note } from '../lib/graphql/types';
 import {
   clearDraftBackup,
   loadDraftBackup,
   saveDraftBackup,
 } from '../lib/utils/draftStorage';
+import { areTagsEqual, isDraftUnchanged } from '../lib/utils/noteDraft';
 
 export interface EditorDraftPayload {
   title: string;
@@ -23,7 +25,12 @@ export interface EditorPageProps {
   note: Note | null;
   allNotes: Note[];
   backlinks: Backlink[];
-  isEnriching: boolean;
+  enrichment: {
+    isPolling: boolean;
+    hasTimedOut: boolean;
+    lastPolledAt: number | null;
+  };
+  aiStatus: AiStatus;
   isLinking: boolean;
   linkError: string | null;
   onSaveNote: (
@@ -36,18 +43,15 @@ export interface EditorPageProps {
   onCreateLink: (targetNoteId: string, description: string) => Promise<void>;
   onRemoveLink: (linkId: string) => Promise<void>;
   onRefreshMetadata: () => void;
-}
-
-function areTagsEqual(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) return false;
-  return a.every((tag, index) => tag === b[index]);
+  onOpenSettings: () => void;
 }
 
 export function EditorPage({
   note,
   allNotes,
   backlinks,
-  isEnriching,
+  enrichment,
+  aiStatus,
   isLinking,
   linkError,
   onSaveNote,
@@ -57,6 +61,7 @@ export function EditorPage({
   onCreateLink,
   onRemoveLink,
   onRefreshMetadata,
+  onOpenSettings,
 }: EditorPageProps) {
   const noteId = note?.id ?? null;
 
@@ -75,6 +80,10 @@ export function EditorPage({
   const savedRevisionRef = useRef(0);
   const isSavingRef = useRef(false);
   const queuedSaveRef = useRef(false);
+  // Snapshot of what the server last confirmed for this note (or null after a
+  // failed save that is not known to be persisted). Changed drafts are only
+  // sent when this snapshot differs from the current draft.
+  const lastSavedSnapshotRef = useRef<EditorDraftPayload | null>(null);
 
   const latestDraftRef = useRef<EditorDraftPayload>({
     title: note?.title ?? '',
@@ -97,6 +106,14 @@ export function EditorPage({
       (backup.title !== (note?.title ?? '') ||
         backup.content !== (note?.content ?? '') ||
         !areTagsEqual(backup.tags, note?.tags ?? []));
+
+    // The server note is the last confirmed state; a restored draft that
+    // differs from it is genuinely unsaved and will be saved once.
+    lastSavedSnapshotRef.current = {
+      title: note?.title ?? '',
+      content: note?.content ?? '',
+      tags: note?.tags ?? [],
+    };
 
     if (hasNewerBackup && backup) {
       setTitle(backup.title);
@@ -129,6 +146,17 @@ export function EditorPage({
       return;
     }
 
+    // Nothing changed since the last confirmed save: don't send updateNote
+    // (and don't trigger another backend enrichment run for the same text).
+    if (lastSavedSnapshotRef.current && isDraftUnchanged(draft, lastSavedSnapshotRef.current)) {
+      setSaveState('saved');
+      setSaveError(null);
+      savedRevisionRef.current = Math.max(savedRevisionRef.current, targetRevision);
+      clearDraftBackup(currentNoteIdRef.current);
+      setRestoredDraftNotice(false);
+      return;
+    }
+
     isSavingRef.current = true;
     setSaveState('saving');
     setSaveError(null);
@@ -139,6 +167,11 @@ export function EditorPage({
       clearDraftBackup(savedNote.id);
       currentNoteIdRef.current = savedNote.id;
       savedRevisionRef.current = Math.max(savedRevisionRef.current, targetRevision);
+      lastSavedSnapshotRef.current = {
+        title: savedNote.title,
+        content: savedNote.content,
+        tags: savedNote.tags,
+      };
       setRestoredDraftNotice(false);
 
       if (revisionRef.current > targetRevision) {
@@ -152,6 +185,9 @@ export function EditorPage({
         err instanceof Error ? err.message : 'Unable to save note changes.';
       setSaveError(message);
       setSaveState('error');
+      // The draft's persisted state is unknown; don't treat it as saved, so
+      // an unchanged retry still sends the update.
+      lastSavedSnapshotRef.current = null;
     } finally {
       isSavingRef.current = false;
       if (queuedSaveRef.current) {
@@ -206,12 +242,15 @@ export function EditorPage({
   };
 
   const handleManualSave = () => {
+    // Ignore repeat clicks and Ctrl+S while a save is already in flight.
+    if (isSavingRef.current) {
+      return;
+    }
     if (!title.trim()) {
       setSaveError('Please enter a title before saving your note.');
       setSaveState('error');
       return;
     }
-    revisionRef.current = Math.max(revisionRef.current, savedRevisionRef.current + 1);
     void performSave();
   };
 
@@ -322,13 +361,15 @@ export function EditorPage({
             currentNote={note}
             allNotes={allNotes}
             backlinks={backlinks}
-            isEnriching={isEnriching}
+            enrichment={enrichment}
+            aiStatus={aiStatus}
             isLinking={isLinking}
             linkError={linkError}
             onSelectNote={onSelectNote}
             onCreateLink={onCreateLink}
             onRemoveLink={onRemoveLink}
             onRefreshMetadata={onRefreshMetadata}
+            onOpenSettings={onOpenSettings}
           />
         )}
       </div>

@@ -179,6 +179,8 @@ func TestAISettingsRuntimeReloadSharedByServices(t *testing.T) {
 		EmbedModel:   "nomic-embed-text",
 	})
 	noteSvc := NewNoteService(db, client)
+	// Shorten the enrichment debounce so the short wait below covers a run.
+	noteSvc.enrichDebounce = 10 * time.Millisecond
 	aiSvc := NewAIService(client, database.NewSQLiteEmbeddingsCache(db, "nomic-embed-text"), noteSvc)
 
 	if _, err := aiSvc.AskAI("hello"); err == nil {

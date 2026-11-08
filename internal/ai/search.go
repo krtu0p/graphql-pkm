@@ -37,6 +37,8 @@ func (c *Client) SmartSearch(query string, contextNotes map[string]string) (*Sma
         "gaps": ["gap1", "gap2"],
         "connections": ["connection1", "connection2"]
     }
+
+    Write the text values of "explanation", "gaps" and "connections" (and the "reason" of each relevant note) in the language of the note contents (the body text, not the titles and not these instructions). Keep all JSON keys exactly as shown, in English, because the application parses them. Do not translate or mix languages.
     `, query, contextStr)
 
 	lowTemp := 0.2

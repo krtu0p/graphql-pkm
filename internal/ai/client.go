@@ -292,6 +292,10 @@ func extractJSON(s string) string {
 	return re.FindString(s)
 }
 
+// noteLanguageRule tells AI text fields to follow the note language instead
+// of the prompt language.
+const noteLanguageRule = "Write your answer in the language of the note contents (the body text, not the title and not these instructions). Do not translate or mix languages."
+
 func formatNotesForAI(notes map[string]string) string {
 	var sb strings.Builder
 	for id, content := range notes {
@@ -313,7 +317,9 @@ func (c *Client) GenerateSummary(title, content string) (string, error) {
 Title: %s
 Content: %s
 
-Provide only the summary, no extra text.`, title, content)
+Provide only the summary, no extra text.
+
+%s`, title, content, noteLanguageRule)
 
 	lowTemp := 0.2
 	request := openRouterChatRequest{
@@ -360,7 +366,10 @@ func (c *Client) ExtractKeyConcepts(title, content string) ([]string, error) {
 Title: %s
 Content: %s
 
-Return only a JSON array of strings, like: ["concept1", "concept2", "concept3"]`, title, content)
+Return only a JSON array of strings, like: ["concept1", "concept2", "concept3"]
+
+%s
+Keep the JSON array format exactly as specified.`, title, content, noteLanguageRule)
 
 	lowTemp := 0.2
 	request := openRouterChatRequest{
@@ -425,6 +434,14 @@ func extractConceptsFromText(text string) []string {
 }
 
 func (c *Client) Ask(prompt string) (string, error) {
+	return c.AskWithMaxTokens(prompt, 0)
+}
+
+// AskWithMaxTokens sends a user prompt and caps the completion length.
+// maxTokens of 0 omits max_tokens from the request so the server decides.
+// Some reasoning models spend tokens on hidden reasoning before the visible
+// answer, so callers showing text to the user pass a generous budget.
+func (c *Client) AskWithMaxTokens(prompt string, maxTokens int) (string, error) {
 	if !c.IsEnabled() {
 		return "", fmt.Errorf("AI client not enabled")
 	}
@@ -439,6 +456,7 @@ func (c *Client) Ask(prompt string) (string, error) {
 			},
 		},
 		Stream:      false,
+		MaxTokens:   maxTokens,
 		Temperature: &lowTemp,
 	}
 

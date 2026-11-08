@@ -74,6 +74,8 @@ func TestAsyncEnrichmentAndOllamaCompatibleEndpoints(t *testing.T) {
 	})
 
 	noteSvc := NewNoteService(db, aiClient)
+	// Shorten the enrichment debounce so the 2s wait below covers a full run.
+	noteSvc.enrichDebounce = 10 * time.Millisecond
 	note, err := noteSvc.CreateNote("Local AI Note", "Testing async background enrichment", []string{"AI"})
 	if err != nil {
 		t.Fatalf("CreateNote: %v", err)

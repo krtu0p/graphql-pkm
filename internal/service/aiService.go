@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"sort"
+	"strings"
 
 	"graphql-pkm/internal/ai"
 	"graphql-pkm/internal/database"
@@ -231,6 +232,57 @@ func (s *AIService) AskAI(prompt string) (string, error) {
 	return s.aiClient.Ask(prompt)
 }
 
+// noRelationshipToken is the marker the relationship prompt asks the model to
+// emit as its first line when two notes are unrelated. It is stripped from the
+// answer and must never reach the UI.
+const noRelationshipToken = "NO_RELATIONSHIP"
+
+// noRelationshipFallback is returned when the AI answer contains nothing but
+// the marker line.
+const noRelationshipFallback = "No meaningful relationship was found between these notes."
+
+// relationshipMaxTokens leaves room for models that spend hidden reasoning
+// tokens before their visible answer.
+const relationshipMaxTokens = 2048
+
+// buildCheckRelationshipPrompt renders the AI prompt for comparing two notes.
+func buildCheckRelationshipPrompt(noteA, noteB *models.Note) string {
+	return fmt.Sprintf(`Decide whether these two notes from a personal knowledge base have a meaningful relationship.
+
+Note A: %s
+%s
+
+Note B: %s
+%s
+
+Only report a relationship if the notes share the same concrete topic, if one note depends on or directly builds on the other, or if one directly applies to the other. Abstract similarities do not count as a relationship (for example: "both involve planning", "both mention preparation", "both are about saving money").
+
+Output rules:
+- Answer in plain text only: no markdown, no headings, no lists (never use "**", "#", bullet dashes, or numbered lists).
+- If there is a relationship: answer in at most 3 short sentences and never use the token NO_RELATIONSHIP.
+- If there is no meaningful relationship: the first line of your answer must be exactly NO_RELATIONSHIP (nothing else on that line), followed by one short sentence describing what each note is about.
+- Write your answer in the language of the note contents (the body text, not the titles and not these instructions). If the two notes are in different languages, use the language of Note A. Do not translate or mix languages.`, noteA.Title, noteA.Content, noteB.Title, noteB.Content)
+}
+
+// stripNoRelationshipLine inspects the first non-empty line of an answer and,
+// if it is the NO_RELATIONSHIP marker (leading/trailing whitespace and casing
+// are tolerated), removes that line and returns the remaining text trimmed of
+// leading blank lines. A plain relationship answer passes through unchanged.
+func stripNoRelationshipLine(text string) string {
+	lines := strings.Split(text, "\n")
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		if strings.EqualFold(trimmed, noRelationshipToken) {
+			return strings.TrimSpace(strings.Join(lines[i+1:], "\n"))
+		}
+		break
+	}
+	return strings.TrimSpace(text)
+}
+
 func (s *AIService) CheckRelationship(noteA, noteB *models.Note) (string, error) {
 	if noteA == nil || noteB == nil {
 		return "", fmt.Errorf("both notes must exist")
@@ -239,16 +291,14 @@ func (s *AIService) CheckRelationship(noteA, noteB *models.Note) (string, error)
 		return "AI features are disabled.", nil
 	}
 
-	prompt := fmt.Sprintf(`Analisis apakah ada hubungan konseptual antara dua catatan berikut:
+	answer, err := s.aiClient.AskWithMaxTokens(buildCheckRelationshipPrompt(noteA, noteB), relationshipMaxTokens)
+	if err != nil {
+		return "", err
+	}
 
-    Catatan 1: %s
-    %s
-
-    Catatan 2: %s
-    %s
-
-    Jika ada hubungan, jelaskan secara singkat. Jika tidak, katakan tidak ada.`,
-		noteA.Title, noteA.Content, noteB.Title, noteB.Content)
-
-	return s.AskAI(prompt)
+	result := stripNoRelationshipLine(answer)
+	if result == "" {
+		return noRelationshipFallback, nil
+	}
+	return result, nil
 }

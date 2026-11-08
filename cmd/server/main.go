@@ -1,10 +1,16 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
+	"time"
 
 	"graphql-pkm/config"
 	"graphql-pkm/internal/ai"
@@ -16,6 +22,17 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/joho/godotenv"
+)
+
+// Shutdown budget: HTTP drain, then AI enrichment flush, before the deferred
+// database close. If this server is ever containerized, "docker stop"
+// defaults to ~10s before SIGKILL — the flush could be killed mid-drain
+// (note text is already saved; only metadata generation would be lost).
+// Either raise stop_grace_period above the sum of these constants or
+// shorten them.
+const (
+	shutdownHTTPGraceTimeout  = 15 * time.Second
+	aiEnrichmentFlushTimeout = 15 * time.Second
 )
 
 func main() {
@@ -115,5 +132,25 @@ func main() {
 	log.Printf("💾 Database: %s", dbDesc)
 	log.Println("=" + strings.Repeat("=", 50))
 
-	log.Fatal(http.ListenAndServe(addr, nil))
+	// Graceful shutdown: on SIGINT/SIGTERM stop accepting connections, then
+	// drain pending AI enrichment before the deferred database close runs.
+	httpServer := &http.Server{Addr: addr}
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-stop
+		log.Println("Shutting down server (waiting for in-flight requests)...")
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownHTTPGraceTimeout)
+		defer cancel()
+		if err := httpServer.Shutdown(ctx); err != nil {
+			log.Printf("Warning: HTTP server shutdown: %v", err)
+		}
+	}()
+
+	if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		log.Fatalf("HTTP server error: %v", err)
+	}
+
+	log.Println("Server stopped; draining pending AI enrichment")
+	noteService.FlushPendingEnrichment(aiEnrichmentFlushTimeout)
 }
