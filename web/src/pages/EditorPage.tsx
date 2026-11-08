@@ -46,6 +46,13 @@ export interface EditorPageProps {
   onOpenSettings: () => void;
 }
 
+export const AUTOSAVE_DELAY_MS = 2000;
+
+type SaveOptions = {
+  /** Manual saves always send, mirroring the pre-skip behavior. */
+  force?: boolean;
+};
+
 export function EditorPage({
   note,
   allNotes,
@@ -133,7 +140,7 @@ export function EditorPage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [noteId]);
 
-  const performSave = useCallback(async () => {
+  const performSave = useCallback(async (options?: SaveOptions) => {
     const draft = latestDraftRef.current;
     const targetRevision = revisionRef.current;
 
@@ -146,9 +153,14 @@ export function EditorPage({
       return;
     }
 
-    // Nothing changed since the last confirmed save: don't send updateNote
-    // (and don't trigger another backend enrichment run for the same text).
-    if (lastSavedSnapshotRef.current && isDraftUnchanged(draft, lastSavedSnapshotRef.current)) {
+    // Autosave skips a text that the server already confirmed unchanged
+    // (avoids a redundant updateNote and backend enrichment run). Manual
+    // saves use options.force and never skip, so the button always reacts.
+    if (
+      !options?.force &&
+      lastSavedSnapshotRef.current &&
+      isDraftUnchanged(draft, lastSavedSnapshotRef.current)
+    ) {
       setSaveState('saved');
       setSaveError(null);
       savedRevisionRef.current = Math.max(savedRevisionRef.current, targetRevision);
@@ -199,6 +211,10 @@ export function EditorPage({
     }
   }, [onSaveNote]);
 
+  // True save debounce: every keystroke re-runs this effect, clearing the
+  // pending timer first; unmount clears it as well. A save already in flight
+  // merges extra fires via performSave's in-flight guard, so never more than
+  // one request runs and none is lost.
   useEffect(() => {
     if (revisionRef.current <= savedRevisionRef.current) {
       return;
@@ -209,7 +225,7 @@ export function EditorPage({
 
     const timer = window.setTimeout(() => {
       void performSave();
-    }, 1000);
+    }, AUTOSAVE_DELAY_MS);
 
     return () => window.clearTimeout(timer);
   }, [title, content, tags, performSave]);
@@ -242,16 +258,18 @@ export function EditorPage({
   };
 
   const handleManualSave = () => {
-    // Ignore repeat clicks and Ctrl+S while a save is already in flight.
-    if (isSavingRef.current) {
-      return;
-    }
+    // Match the original ordering: surface the empty-title error first.
     if (!title.trim()) {
       setSaveError('Please enter a title before saving your note.');
       setSaveState('error');
       return;
     }
-    void performSave();
+    // Ignore repeat clicks and Ctrl+S while a save is already in flight.
+    if (isSavingRef.current) {
+      return;
+    }
+    revisionRef.current = Math.max(revisionRef.current, savedRevisionRef.current + 1);
+    void performSave({ force: true });
   };
 
   const wordCount = useMemo(() => {

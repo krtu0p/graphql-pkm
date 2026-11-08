@@ -15,8 +15,8 @@ import (
 )
 
 // enrichDebounceInterval delays each enrichment job so rapid consecutive
-// edits coalesce into a single AI run.
-const enrichDebounceInterval = 3 * time.Second
+// edits coalesce into a single AI run. Tests shorten it via newNoteService.
+const enrichDebounceInterval = 15 * time.Second
 
 type enrichJob struct {
 	noteID  string
