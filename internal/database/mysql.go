@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"graphql-pkm/internal/models"
 	"log"
@@ -10,6 +11,9 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 )
+
+// ErrAppSettingsUnsupported is returned when app settings are used with MySQL.
+var ErrAppSettingsUnsupported = errors.New("app settings are not supported with the MySQL backend; use SQLite or configure AI with environment variables")
 
 type MySQLDB struct {
 	db *sql.DB
@@ -80,6 +84,8 @@ func createTables(db *sql.DB) error {
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS embeddings_cache (
 			note_id VARCHAR(36) PRIMARY KEY,
+			model VARCHAR(255) NOT NULL DEFAULT '',
+			dimensions INT NOT NULL DEFAULT 0,
 			embedding_json JSON NOT NULL,
 			created_at DATETIME(6) NOT NULL,
 			updated_at DATETIME(6) NOT NULL,
@@ -89,6 +95,8 @@ func createTables(db *sql.DB) error {
 	if err != nil {
 		return fmt.Errorf("failed to create embeddings_cache table: %w", err)
 	}
+	_, _ = db.Exec(`ALTER TABLE embeddings_cache ADD COLUMN model VARCHAR(255) NOT NULL DEFAULT ''`)
+	_, _ = db.Exec(`ALTER TABLE embeddings_cache ADD COLUMN dimensions INT NOT NULL DEFAULT 0`)
 	log.Println("  ✓ embeddings_cache table ready")
 	
 	return nil
@@ -286,9 +294,13 @@ func (m *MySQLDB) GetLinksByNote(noteID string) ([]*models.Link, error) {
 	var links []*models.Link
 	for rows.Next() {
 		var link models.Link
-		err := rows.Scan(&link.ID, &link.SourceNoteID, &link.TargetNoteID, &link.Description, &link.CreatedAt)
+		var description sql.NullString
+		err := rows.Scan(&link.ID, &link.SourceNoteID, &link.TargetNoteID, &description, &link.CreatedAt)
 		if err != nil {
 			return nil, err
+		}
+		if description.Valid {
+			link.Description = &description.String
 		}
 		links = append(links, &link)
 	}
@@ -345,4 +357,12 @@ func (m *MySQLDB) GetBackLinksByNote(noteID string) ([]*models.Link, error) {
 	}
 	return links, nil
 	
+}
+
+func (m *MySQLDB) GetAppSetting(key string) (string, bool, error) {
+	return "", false, ErrAppSettingsUnsupported
+}
+
+func (m *MySQLDB) SetAppSettings(values map[string]string) error {
+	return ErrAppSettingsUnsupported
 }

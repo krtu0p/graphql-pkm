@@ -42,6 +42,21 @@ type SmartSearchResponse {
   connections: [String!]!
 }
 
+type AISettings {
+  enabled: Boolean!
+  provider: String!
+  baseUrl: String!
+  model: String!
+  hasApiKey: Boolean!
+  embedBaseUrl: String!
+  embedModel: String!
+}
+
+type AIModelList {
+  models: [String!]!
+  error: String
+}
+
 input CreateNoteInput {
   title: String!
   content: String!
@@ -52,6 +67,22 @@ input UpdateNoteInput {
   title: String
   content: String
   tags: [String!]
+}
+
+input SaveAISettingsInput {
+  enabled: Boolean!
+  provider: String!
+  baseUrl: String!
+  model: String!
+  apiKey: String
+  embedBaseUrl: String!
+  embedModel: String!
+}
+
+input ListAIModelsInput {
+  provider: String
+  baseUrl: String!
+  apiKey: String
 }
 
 type Query {
@@ -65,6 +96,7 @@ type Query {
   smartSearch(query: String!): SmartSearchResponse!
   hybridSearch(query: String!): [SearchResult!]!
   checkRelationship(noteIDA: ID!, noteIDB: ID!): String!
+  aiSettings: AISettings!
 }
 
 type Mutation {
@@ -73,6 +105,8 @@ type Mutation {
   deleteNote(id: ID!): Boolean!
   linkNotes(sourceId: ID!, targetId: ID!, description: String): Link!
   unlinkNotes(linkId: ID!): Boolean!
+  saveAISettings(input: SaveAISettingsInput!): AISettings!
+  listAIModels(input: ListAIModelsInput!): AIModelList!
 }
 
 type Subscription {

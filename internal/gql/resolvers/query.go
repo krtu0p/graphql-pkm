@@ -59,3 +59,7 @@ func (r *queryResolver) Links(ctx context.Context, noteID string) ([]*models.Lin
 func (r *queryResolver) CheckRelationship(ctx context.Context, noteIDA string, noteIDB string) (string, error) {
     return r.searchService.CheckRelationship(noteIDA, noteIDB)
 }
+
+func (r *queryResolver) AiSettings(ctx context.Context) (*models.AISettings, error) {
+    return r.settingsService.GetAISettings()
+}

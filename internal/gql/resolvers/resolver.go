@@ -6,14 +6,16 @@ import (
 )
 
 type Resolver struct {
-    noteService   *service.NoteService
-    searchService *service.SearchService
+    noteService     *service.NoteService
+    searchService   *service.SearchService
+    settingsService *service.AISettingsService
 }
 
-func NewResolver(noteService *service.NoteService, searchService *service.SearchService) *Resolver {
+func NewResolver(noteService *service.NoteService, searchService *service.SearchService, settingsService *service.AISettingsService) *Resolver {
     return &Resolver{
-        noteService:   noteService,
-        searchService: searchService,
+        noteService:     noteService,
+        searchService:   searchService,
+        settingsService: settingsService,
     }
 }
 

@@ -22,6 +22,18 @@ A GraphQL-based Personal Knowledge Management system with AI-powered search and 
 - **Caching**: MySQL-based embedding cache
 - **Configuration**: godotenv
 
+## Run Locally (Zero Setup)
+
+No `.env` file or external database server is required. By default, the server binds to `127.0.0.1:8080` and stores data in `./data/pkm.db` (SQLite):
+
+```bash
+go run ./cmd/server
+```
+
+Then open http://127.0.0.1:8080 for the GraphQL Playground.
+
+To use MySQL instead of SQLite, set `DB_DRIVER=mysql` and `DATABASE_URL` in `.env` (see `.env.example`).
+
 ## Installation
 
 ### Requirements
@@ -91,12 +103,22 @@ You should see:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `PORT` | Server port | `8080` |
+| `HOST` | Server bind address | `127.0.0.1` |
+| `PORT` | Server port (also accepts `Port`) | `8080` |
 | `ENVIRONMENT` | Environment mode | `development` |
-| `apiKey` | Groq API key | `""` (AI disabled) |
-| `apiUrl` | Groq API endpoint | `https://api.groq.com/openai/v1` |
-| `defaultModel` | AI model to use | `llama-3.3-70b-versatile` |
-| `dbUrl` | MySQL connection string | `root:password@tcp(localhost:3306)/pkm?parseTime=true` |
+| `DB_DRIVER` | Storage backend (`sqlite` or `mysql`) | `sqlite` |
+| `DB_PATH` | SQLite database file path | `./data/pkm.db` |
+| `DATABASE_URL` | MySQL connection string (also accepts `dbUrl`) | `root:password@tcp(localhost:3306)/pkm?parseTime=true` |
+| `AI_ENABLED` | Enable or disable AI features (`true`/`false`) | `true` (when `AI_BASE_URL` is set) |
+| `AI_BASE_URL` | OpenAI-compatible chat API base URL | `http://localhost:11434/v1` |
+| `AI_API_KEY` | Optional API key for chat provider | `""` |
+| `AI_MODEL` | Chat model name | `llama3.2` |
+| `EMBED_BASE_URL` | OpenAI-compatible embeddings API base URL | Defaults to `AI_BASE_URL` |
+| `EMBED_API_KEY` | Optional API key for embeddings provider | Defaults to `AI_API_KEY` |
+| `EMBED_MODEL` | Embedding model name | `nomic-embed-text` |
+| `SEMANTIC_THRESHOLD` | Minimum cosine similarity for semantic matches | `0.6` |
+
+> **Tuning `SEMANTIC_THRESHOLD`:** Cosine similarity distributions vary significantly across embedding models (e.g., `nomic-embed-text`, `mxbai-embed-large`, `jina-embeddings-v3`). Adjust `SEMANTIC_THRESHOLD` (for example between `0.4` and `0.75`) to match your chosen `EMBED_MODEL`.
 
 ### Supported AI Models (Groq)
 
